@@ -1,0 +1,17 @@
+# Dependencies
+node_modules
+
+# Build output
+dist
+
+# TypeScript build artifacts
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
+
+# Editor / OS / local tooling
+.DS_Store
+.claude
+vite.config.js.timestamp-*.mjs
+dummy/
+.vercel

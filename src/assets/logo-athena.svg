@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">
+  <rect width="40" height="40" rx="8" fill="#6B2D9A"/>
+  <!-- stem -->
+  <rect x="18.5" y="22" width="3" height="10" rx="1.5" fill="#7CB814"/>
+  <!-- left leaf -->
+  <path d="M19 24 C14 20 11 14 14 10 C16 14 18 18 19 24Z" fill="#7CB814"/>
+  <!-- right leaf -->
+  <path d="M21 24 C26 20 29 14 26 10 C24 14 22 18 21 24Z" fill="#7CB814"/>
+  <!-- center top leaf -->
+  <path d="M20 22 C17 17 17 11 20 8 C23 11 23 17 20 22Z" fill="#8DC820"/>
+  <!-- person dot -->
+  <circle cx="27" cy="13" r="2.5" fill="#8DC820"/>
+</svg>

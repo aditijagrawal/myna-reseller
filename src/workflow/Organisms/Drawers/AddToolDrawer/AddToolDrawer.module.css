@@ -1,0 +1,526 @@
+.panel {
+  position: relative;
+  width: 650px;
+  max-width: 95vw;
+  height: 100%;
+  background: #fff;
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.14);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  font-family: 'Roboto', sans-serif;
+}
+
+/* ─── Header ─── */
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 24px;
+  background: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+.backBtn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #424242;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.backBtn:hover { background: #f5f5f5; }
+
+.headerTitle {
+  font-size: 18px;
+  font-weight: 400;
+  color: #212121;
+  line-height: 24px;
+}
+
+/* ─── Body ─── */
+
+.body {
+  padding: 0 24px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ─── Search ─── */
+
+.searchWrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 0 12px;
+  height: 40px;
+  background: #fff;
+}
+
+.searchInput {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 14px;
+  font-family: 'Roboto', sans-serif;
+  color: #212121;
+  background: transparent;
+}
+
+.searchInput::placeholder { color: #9e9e9e; }
+
+/* ─── Tabs ─── */
+
+.tabRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #e5e9f0;
+  margin-bottom: -4px;
+}
+
+.tabs {
+  display: flex;
+}
+
+.tab {
+  padding: 10px 16px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  font-size: 14px;
+  font-family: 'Roboto', sans-serif;
+  color: #616161;
+  margin-bottom: -1px;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.tab:hover { color: #212121; }
+
+.tabActive {
+  color: #1976d2;
+  border-bottom-color: #1976d2;
+  font-weight: 400;
+}
+
+.addCustomBtn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: 'Roboto', sans-serif;
+  color: #1976d2;
+  padding: 4px 0;
+  flex-shrink: 0;
+}
+
+.addCustomBtn:hover { opacity: 0.8; }
+
+/* ─── Entity filter dropdown ─── */
+
+.entityFilterBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-family: 'Roboto', sans-serif;
+  color: #1976d2;
+  padding: 2px 0;
+}
+
+.entityFilterBtn:hover { opacity: 0.8; }
+
+.entityFilterLabel {
+  font-size: 14px;
+  color: #1976d2;
+  font-family: 'Roboto', sans-serif;
+}
+
+.entityDropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  background: #fff;
+  border: 1px solid #e5e9f0;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  min-width: 180px;
+  z-index: 100;
+  overflow: hidden;
+}
+
+.entityDropdownItem {
+  display: block;
+  width: 100%;
+  padding: 10px 14px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-family: 'Roboto', sans-serif;
+  color: #212121;
+  text-align: left;
+  transition: background 0.12s;
+}
+
+.entityDropdownItem:hover { background: #f5f7fa; }
+.entityDropdownItemActive { color: #1976d2; background: #e8f0fd; }
+.entityDropdownItemActive:hover { background: #dce8fc; }
+
+/* ─── Tool list ─── */
+
+.toolList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.toolRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 1px solid #e5e9f0;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: background 0.12s;
+}
+
+.toolRow:hover { background: #f5f7fa; }
+
+.toolRowDisabled { opacity: 0.6; cursor: default; }
+.toolRowDisabled:hover { background: #fff; }
+
+.toolIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  background: #f5f5f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.toolIconImg {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
+.toolInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.toolName {
+  font-size: 14px;
+  color: #212121;
+  font-family: 'Roboto', sans-serif;
+  line-height: 20px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.toolDesc {
+  font-size: 12px;
+  color: #757575;
+  font-family: 'Roboto', sans-serif;
+  line-height: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.connectedBadge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.connectedText {
+  font-size: 13px;
+  color: #424242;
+  font-family: 'Roboto', sans-serif;
+  white-space: nowrap;
+}
+
+.connectBtn {
+  font-size: 13px;
+  color: #1976d2;
+  font-family: 'Roboto', sans-serif;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.empty {
+  padding: 32px;
+  text-align: center;
+  font-size: 14px;
+  color: #9e9e9e;
+  font-family: 'Roboto', sans-serif;
+}
+
+/* ─── Status dots ─── */
+
+.statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.statusDotGreen { background: #4caf50; }
+.statusDotRed   { background: #f44336; }
+
+/* ─── Account select trigger ─── */
+
+.accountSelectTrigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid #c5cad3;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  font-family: 'Roboto', sans-serif;
+  text-align: left;
+  transition: border-color 0.15s;
+}
+
+.accountSelectTrigger:hover { border-color: #9e9e9e; }
+
+.accountSelectPlaceholder {
+  font-size: 14px;
+  color: #9e9e9e;
+}
+
+.accountSelectValue {
+  font-size: 14px;
+  color: #212121;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.accountDropdownPanel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 1px solid #e5e9f0;
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  z-index: 200;
+  overflow: hidden;
+}
+
+/* ─── Account selection ─── */
+
+.accountSection {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.accountLabel {
+  font-size: 14px;
+  color: #212121;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 400;
+}
+
+.required { color: #de1b0c; }
+
+.accountSubLabel {
+  font-size: 12px;
+  color: #757575;
+  font-family: 'Roboto', sans-serif;
+  margin-bottom: 8px;
+}
+
+.accountBox {
+  border: 1px solid #e5e9f0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.accountBoxHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.accountBoxLabel {
+  font-size: 13px;
+  color: #9e9e9e;
+  font-family: 'Roboto', sans-serif;
+}
+
+.addAccountBtn {
+  font-size: 13px;
+  color: #1976d2;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: 'Roboto', sans-serif;
+  padding: 0;
+}
+
+.accountSearch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.accountSearchInput {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 14px;
+  font-family: 'Roboto', sans-serif;
+  color: #212121;
+  background: transparent;
+}
+
+.accountSearchInput::placeholder { color: #9e9e9e; }
+
+.accountList {
+  display: flex;
+  flex-direction: column;
+}
+
+.accountRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid #f5f5f5;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: background 0.12s;
+}
+
+.accountRow:last-child { border-bottom: none; }
+.accountRow:hover:not(:disabled) { background: #f5f7fa; }
+.accountRowSelected { background: #e8f0fd; }
+.accountRowExpired { cursor: default; opacity: 0.8; }
+
+.accountInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.accountEmail {
+  font-size: 14px;
+  color: #212121;
+  font-family: 'Roboto', sans-serif;
+  line-height: 20px;
+}
+
+.accountStatus {
+  font-size: 12px;
+  color: #757575;
+  font-family: 'Roboto', sans-serif;
+}
+
+.accountError {
+  font-size: 12px;
+  color: #757575;
+  font-family: 'Roboto', sans-serif;
+  line-height: 16px;
+}
+
+.reconnectBtn {
+  font-size: 13px;
+  color: #1976d2;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: 'Roboto', sans-serif;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+/* ─── Selected account row ─── */
+
+.selectedAccountRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid #c5cad3;
+  border-radius: 4px;
+  padding: 0 12px;
+  height: 36px;
+  background: #fff;
+}
+
+.selectedAccountEmail {
+  font-size: 14px;
+  color: #212121;
+  font-family: 'Roboto', sans-serif;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.accountClearBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #757575;
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  border-radius: 2px;
+}
+
+.accountClearBtn:hover { color: #212121; }

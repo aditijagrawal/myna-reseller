@@ -1,0 +1,169 @@
+import React, { useState, useRef } from 'react';
+import './LHSEntityGroup.css';
+
+export default function LHSEntityGroup({
+  title,
+  items = [],
+  nodeType,
+  parentLabel,
+  onItemsChange,
+  viewOnly = false,
+  readOnly = false,
+  dragAlwaysVisible = false,
+  disabledItems = null,
+}) {
+  const disabledSet = disabledItems instanceof Set ? disabledItems : new Set(disabledItems ?? []);
+  /* Items are strings OR { label, description } objects */
+  const labelOf = (item) => (typeof item === 'string' ? item : item?.label ?? '');
+  const descriptionOf = (item) => (typeof item === 'string' ? null : item?.description ?? null);
+  const canEdit = !viewOnly && !readOnly && !!onItemsChange;
+  const [editingIdx, setEditingIdx] = useState(null);
+  const [editDraft, setEditDraft] = useState('');
+  const [addingNew, setAddingNew] = useState(false);
+  const [newDraft, setNewDraft] = useState('');
+  const addGuardRef = useRef(false);
+
+  const handleDragStart = (e, item) => {
+    e.dataTransfer.setData('application/reactflow-type', nodeType);
+    e.dataTransfer.setData('application/reactflow-label', parentLabel);
+    e.dataTransfer.setData('application/reactflow-description', labelOf(item));
+    e.dataTransfer.effectAllowed = 'copy';
+  };
+
+  const startEdit = (idx) => {
+    setEditingIdx(idx);
+    setEditDraft(labelOf(items[idx]));
+  };
+
+  const commitEdit = (idx) => {
+    const trimmed = editDraft.trim();
+    if (trimmed) {
+      const next = items.map((it, i) => (i === idx ? trimmed : it));
+      onItemsChange?.(next);
+    }
+    setEditingIdx(null);
+  };
+
+  const deleteItem = (idx) => {
+    onItemsChange?.(items.filter((_, i) => i !== idx));
+    setEditingIdx(null);
+  };
+
+  const commitAdd = () => {
+    if (addGuardRef.current) return;
+    addGuardRef.current = true;
+    const trimmed = newDraft.trim();
+    if (trimmed) {
+      onItemsChange?.([...items, trimmed]);
+    }
+    setAddingNew(false);
+    setNewDraft('');
+  };
+
+  const cancelAdd = () => {
+    addGuardRef.current = true;
+    setAddingNew(false);
+    setNewDraft('');
+  };
+
+  return (
+    <div className="lhs-entity-group">
+      <p className="lhs-entity-group__title">{title}</p>
+
+      <div className="lhs-entity-group__items">
+        {items.map((item, idx) => {
+          const isDisabled = disabledSet.has(labelOf(item));
+          return (
+          <div
+            key={idx}
+            className={`lhs-entity-group__item${editingIdx === idx ? ' lhs-entity-group__item--editing' : ''}${isDisabled ? ' lhs-entity-group__item--disabled' : ''}`}
+            draggable={!viewOnly && !isDisabled && (readOnly || editingIdx !== idx)}
+            onDragStart={(e) => !viewOnly && !isDisabled && (readOnly || editingIdx !== idx) && handleDragStart(e, item)}
+            aria-disabled={isDisabled || undefined}
+          >
+            {editingIdx === idx ? (
+              <input
+                className="lhs-entity-group__item-input"
+                value={editDraft}
+                autoFocus
+                onChange={(e) => setEditDraft(e.target.value)}
+                onBlur={() => commitEdit(idx)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') { e.preventDefault(); commitEdit(idx); }
+                  if (e.key === 'Escape') { e.preventDefault(); setEditingIdx(null); }
+                }}
+              />
+            ) : (
+              <span className="lhs-entity-group__item-body">
+                <span className="lhs-entity-group__item-label">{labelOf(item)}</span>
+                {descriptionOf(item) && (
+                  <span className="lhs-entity-group__item-description">{descriptionOf(item)}</span>
+                )}
+              </span>
+            )}
+
+            {!viewOnly && (
+              <div className="lhs-entity-group__item-actions">
+                {canEdit && editingIdx === idx ? (
+                  <button
+                    className="lhs-entity-group__item-btn lhs-entity-group__item-btn--delete"
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => deleteItem(idx)}
+                  >
+                    <span className="material-symbols-outlined">delete</span>
+                  </button>
+                ) : canEdit ? (
+                  <button
+                    className="lhs-entity-group__item-btn lhs-entity-group__item-btn--edit"
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={(e) => { e.stopPropagation(); startEdit(idx); }}
+                  >
+                    <span className="material-symbols-outlined">edit</span>
+                  </button>
+                ) : null}
+                <span
+                  className={`lhs-entity-group__item-drag material-symbols-outlined${
+                    dragAlwaysVisible || isDisabled ? ' lhs-entity-group__item-drag--visible' : ''
+                  }`}
+                >
+                  drag_indicator
+                </span>
+              </div>
+            )}
+          </div>
+          );
+        })}
+
+        {addingNew && (
+          <div className="lhs-entity-group__item lhs-entity-group__item--editing">
+            <input
+              className="lhs-entity-group__item-input"
+              value={newDraft}
+              autoFocus
+              placeholder="Item name…"
+              onChange={(e) => setNewDraft(e.target.value)}
+              onBlur={commitAdd}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') { e.preventDefault(); commitAdd(); }
+                if (e.key === 'Escape') { e.preventDefault(); cancelAdd(); }
+              }}
+            />
+          </div>
+        )}
+      </div>
+
+      {canEdit && (
+        <button
+          className="lhs-entity-group__add-btn"
+          type="button"
+          onClick={() => { addGuardRef.current = false; setAddingNew(true); setNewDraft(''); }}
+        >
+          <span className="material-symbols-outlined">add_circle</span>
+          Add
+        </button>
+      )}
+    </div>
+  );
+}

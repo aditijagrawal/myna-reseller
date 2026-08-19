@@ -1,0 +1,658 @@
+/* Suppress CommonSideDrawer's built-in header ghost */
+.drawerSuppress {
+  display: none;
+}
+
+.outer {
+  display: flex;
+  flex-direction: column;
+  font-family: 'Roboto', sans-serif;
+}
+
+/* ─── Custom header ─── */
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  flex-shrink: 0;
+  background: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.backBtn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #555;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.backBtn:hover {
+  background: #f5f5f5;
+}
+
+.backBtn .material-symbols-outlined {
+  font-size: 20px;
+}
+
+.headerTitle {
+  font-size: 18px;
+  font-weight: 400;
+  color: #212121;
+  line-height: 24px;
+  letter-spacing: -0.36px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: 'Roboto', sans-serif;
+}
+
+.saveBtn {
+  height: 36px;
+  padding: 0 20px;
+  background: #1976d2;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 400;
+  font-family: 'Roboto', sans-serif;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.saveBtn:hover {
+  background: #1565c0;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.moreBtn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #555;
+  padding: 0;
+}
+
+.moreBtn:hover {
+  background: #f5f5f5;
+}
+
+.moreBtn .material-symbols-outlined {
+  font-size: 20px;
+}
+
+.moreMenu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background: #fff;
+  border: 1px solid #e5e9f0;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  min-width: 148px;
+  z-index: 200;
+  overflow: hidden;
+}
+
+.moreMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: 'Roboto', sans-serif;
+  font-size: 13px;
+  color: #212121;
+  text-align: left;
+  transition: background 0.12s;
+}
+
+.moreMenuItem:hover {
+  background: #f4f6f7;
+}
+
+.moreMenuItem .material-symbols-outlined {
+  font-size: 16px;
+  color: #666;
+}
+
+/* ─── Body: free-flowing fields, 20px between each ─── */
+
+.body {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ─── Interactive field wrappers ─── */
+
+.fieldWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fieldLabelRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.fieldLabel {
+  font-size: 13px;
+  font-weight: 400;
+  color: #212121;
+  line-height: 18px;
+  font-family: 'Roboto', sans-serif;
+}
+
+.fieldInfoIcon {
+  font-size: 14px !important;
+  width: 14px;
+  height: 14px;
+  color: #9e9e9e;
+  line-height: 1;
+  cursor: help;
+}
+
+.fieldHelp {
+  font-size: 12px;
+  font-weight: 400;
+  color: #6b7280;
+  line-height: 18px;
+  font-family: 'Roboto', sans-serif;
+}
+
+.required {
+  color: #de1b0c;
+}
+
+.optionGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.optionLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #212121;
+  font-family: 'Roboto', sans-serif;
+  line-height: 20px;
+  width: 100%;
+}
+
+.optionInput {
+  accent-color: #1976d2;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+.toggleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* ─── Tags input ─── */
+
+.tagsInput {
+  min-height: 40px;
+  border: 1px solid #d0d5dd;
+  border-radius: 6px;
+  background: #fff;
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  cursor: text;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.tagChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #f2f4f7;
+  border: 1px solid #e5e9f0;
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 13px;
+  color: #212121;
+  font-family: 'Roboto', sans-serif;
+  white-space: nowrap;
+}
+
+.tagChipRemove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  line-height: 1;
+}
+
+.tagChipRemove :global(.material-symbols-outlined) {
+  font-size: 14px;
+  color: #888;
+}
+
+.tagChipRemove:hover :global(.material-symbols-outlined) {
+  color: #212121;
+}
+
+.tagInputInner {
+  flex: 1;
+  min-width: 80px;
+  border: none;
+  outline: none;
+  font-family: 'Roboto', sans-serif;
+  font-size: 14px;
+  color: #212121;
+  background: transparent;
+  padding: 0;
+}
+
+.variableEmptyHint {
+  font-size: 14px;
+  color: #9e9e9e;
+  font-family: 'Roboto', sans-serif;
+  line-height: 20px;
+}
+
+/* ─── Input with suffix (e.g. max call duration + minutes) ─── */
+
+.inputSuffixRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.suffixInput {
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid #c5cad3;
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: 'Roboto', sans-serif;
+  color: #212121;
+  background: #fff;
+  box-sizing: border-box;
+  outline: none;
+  width: 100%;
+}
+
+.suffixInputHalf {
+  width: 50%;
+  flex-shrink: 0;
+}
+
+.suffixInput:focus {
+  border-color: #1976d2;
+}
+
+.iconInputRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid #e5e9f0;
+  border-radius: 4px;
+  background: #fff;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.iconInputRow:focus-within {
+  border-color: #1976d2;
+}
+
+.iconInputLeading {
+  font-size: 20px !important;
+  color: #6b7280;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.iconInput {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  font-family: 'Roboto', sans-serif;
+  font-size: 14px;
+  color: #212121;
+  background: transparent;
+}
+
+.iconInput::placeholder {
+  color: #9e9e9e;
+}
+
+.fieldSuffix {
+  font-size: 14px;
+  line-height: 20px;
+  color: #6b7280;
+  font-family: 'Roboto', sans-serif;
+  flex-shrink: 0;
+}
+
+/* ─── Select ─── */
+
+.selectWrap {
+  position: relative;
+  width: 100%;
+}
+
+.selectInput {
+  height: 36px;
+  padding: 0 36px 0 12px;
+  border: 1px solid #c5cad3;
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: 'Roboto', sans-serif;
+  color: #212121;
+  background: #fff;
+  width: 100%;
+  box-sizing: border-box;
+  outline: none;
+  appearance: none;
+  cursor: pointer;
+}
+
+.selectInput:invalid,
+.selectInput option[value='']:checked {
+  color: #9e9e9e;
+}
+
+.selectInput:focus {
+  border-color: #1976d2;
+}
+
+.selectChevron {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 20px !important;
+  color: #6b7280;
+  pointer-events: none;
+  line-height: 1;
+}
+
+/* ─── Conditional fields (calling window range) ─── */
+
+.conditionalFields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 4px;
+  width: 100%;
+}
+
+.conditionalFieldsRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 4px;
+  width: 100%;
+  align-items: start;
+}
+
+.conditionalFieldsRow > .fieldWrap {
+  min-width: 0;
+}
+
+.conditionalFieldsBelow {
+  margin-top: 12px;
+  width: 100%;
+}
+
+/* ─── Checkbox row layout ─── */
+
+.checkboxRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  padding-top: 8px;
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #212121;
+  font-family: 'Roboto', sans-serif;
+  line-height: 20px;
+}
+
+/* ─── Prompt textarea with variable toolbar ─── */
+
+.promptBox {
+  border: 1px solid #c5cad3;
+  border-radius: 4px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.promptTextarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 12px;
+  border: none;
+  outline: none;
+  resize: vertical;
+  font-family: 'Roboto', sans-serif;
+  font-size: 14px;
+  line-height: 20px;
+  color: #212121;
+  box-sizing: border-box;
+  background: transparent;
+}
+
+.promptTextarea::placeholder {
+  color: #9e9e9e;
+}
+
+.promptToolbar {
+  display: flex;
+  align-items: center;
+  padding: 6px 10px;
+  background: #fff;
+}
+
+.variableBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  padding: 2px 4px;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #212121;
+  font-family: 'Roboto', sans-serif;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.variableBtn:hover {
+  background: #f2f4f7;
+}
+
+.variableBtnBrace {
+  font-size: 14px;
+}
+
+.variableBtnX {
+  font-size: 13px;
+}
+
+/* ─── A/B section card ─── */
+
+.abCard {
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.abCheckboxRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.abCheckboxLabel {
+  font-size: 14px;
+  font-weight: 400;
+  color: #212121;
+  font-family: 'Roboto', sans-serif;
+  line-height: 20px;
+}
+
+.abCardContent {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+/* ─── Distribution field ─── */
+
+.distributionRows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.variantRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.variantInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+}
+
+.variantName {
+  font-size: 14px;
+  color: #212121;
+  font-family: 'Roboto', sans-serif;
+  line-height: 20px;
+}
+
+.variantSublabel {
+  font-size: 12px;
+  color: #8f8f8f;
+  font-family: 'Roboto', sans-serif;
+  line-height: 16px;
+}
+
+.variantInputRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.variantInput {
+  width: 56px;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid #c5cad3;
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: 'Roboto', sans-serif;
+  color: #212121;
+  background: #fff;
+  box-sizing: border-box;
+  outline: none;
+  text-align: center;
+}
+
+.variantInput:focus {
+  border-color: #1976d2;
+}
+
+/* ─── Date select field ─── */
+
+.dateSelectRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.dateSelectPrefix {
+  font-size: 14px;
+  color: #212121;
+  font-family: 'Roboto', sans-serif;
+  line-height: 20px;
+  flex-shrink: 0;
+}

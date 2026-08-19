@@ -1,0 +1,133 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ─── Locations field ─── */
+.locationsField {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.locationsLabel {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 18px;
+  font-family: 'Roboto', arial, sans-serif;
+}
+
+.locationsLabelText {
+  color: #212121;
+}
+
+.locationsRequired {
+  color: #de1b0c;
+}
+
+/* ─── Pencil edit button beside label ─── */
+.locationsEditBtn {
+  margin-left: auto;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #8f8f8f;
+  display: flex;
+  align-items: center;
+  padding: 0;
+  line-height: 1;
+}
+
+.locationsEditBtn:hover {
+  color: #424242;
+}
+
+/* ─── Chip row ─── */
+.chipsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+/* ─── Individual location chip — grey pill matching Figma 72-29617 ─── */
+.locationChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 6px 0 10px;
+  background: #f4f6f7;
+  border: 1px solid #e0e4e8;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #424242;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.locationChipName {
+  color: #424242;
+  font-size: 12px;
+  font-family: 'Roboto', sans-serif;
+  line-height: 1;
+}
+
+.locationChipClose {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: #757575;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.locationChipClose:hover {
+  color: #212121;
+}
+
+/* ─── "+ N more" expand link ─── */
+.moreLink {
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 20px;
+  color: #1976d2;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font-family: 'Roboto', arial, sans-serif;
+  align-self: flex-start;
+  text-align: left;
+}
+
+.moreLink:hover {
+  text-decoration: none;
+}
+
+/* ─── "+ Add" link ─── */
+.addLink {
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 20px;
+  color: #1976d2;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  font-family: 'Roboto', arial, sans-serif;
+}
+
+.addLink:hover {
+  text-decoration: none;
+}

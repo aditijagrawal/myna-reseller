@@ -1,0 +1,483 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sectionLabelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 18px;
+}
+
+.required {
+  color: #de1b0c;
+}
+
+.readOnlyField {
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  font-size: 14px;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 400;
+  line-height: 20px;
+  letter-spacing: -0.28px;
+  color: #212121;
+  border: 1px solid #e5e9f0;
+  border-radius: 4px;
+  outline: none;
+  /* Arrow Elemental read-only / disabled fill (L2 BG) */
+  background: #fafafa;
+  box-sizing: border-box;
+  cursor: default;
+  pointer-events: none;
+  user-select: text;
+}
+
+.readOnlyTextarea {
+  height: auto;
+  min-height: 120px;
+  padding: 12px;
+  resize: none;
+  line-height: 20px;
+  /* Allow scroll inside long read-only text */
+  pointer-events: auto;
+  overflow-y: auto;
+}
+
+.readOnlySteps {
+  height: auto;
+  min-height: 120px;
+  padding: 16px;
+  pointer-events: auto;
+}
+
+.readOnlySteps .stepsList {
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: 0;
+}
+
+.readOnlySteps .stepsEmpty {
+  margin: 0;
+}
+
+.libraryContextBoxReadOnly {
+  background: #fafafa;
+  pointer-events: none;
+}
+
+/* ── Library-style context box (matches ProcedureDetailScreen) ── */
+
+.libraryContextBox {
+  border: 1px solid #e5e9f0;
+  border-radius: 4px;
+  background: #fff;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.libraryContextChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 12px 12px 8px;
+}
+
+.libraryContextFooter {
+  display: flex;
+  align-items: center;
+  position: relative;
+  padding: 8px 12px;
+}
+
+.libraryContextAddBtn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+  letter-spacing: -0.28px;
+  color: #1976d2;
+  font-family: 'Roboto', sans-serif;
+  transition: color 0.15s;
+}
+
+.libraryContextAddBtn:hover {
+  color: #1565c0;
+}
+
+.libraryContextFooter [class*='typePicker'] {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 12px;
+  right: auto;
+  z-index: 50;
+}
+
+.libraryCheckbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 400;
+  line-height: 20px;
+  letter-spacing: -0.28px;
+  color: #212121;
+  cursor: pointer;
+  margin-top: 4px;
+}
+
+.libraryCheckbox input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: #1976d2;
+}
+
+.moreContext {
+  display: inline-flex;
+  align-self: flex-start;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 18px;
+  color: #1976d2;
+  font-family: 'Roboto', sans-serif;
+}
+
+.moreContext:disabled {
+  cursor: default;
+}
+
+.contextAddRow {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  position: relative;
+}
+
+.contextAddBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 20px;
+  letter-spacing: -0.24px;
+  color: #1976d2;
+  font-family: 'Roboto', sans-serif;
+}
+
+.contextAddBtn:hover {
+  color: #1565c0;
+}
+
+.contextAddRow [class*='typePicker'] {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  left: auto;
+  z-index: 50;
+}
+
+.contextAddRowInContainer {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  position: relative;
+  align-self: flex-start;
+}
+
+.contextAddRowInContainer [class*='typePicker'] {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: auto;
+  z-index: 50;
+}
+
+.chipTypePickerAnchor {
+  position: relative;
+}
+
+/* ── Editable step lines — match read-only typography ── */
+.stepTitleText[contenteditable]:focus,
+.stepBulletText[contenteditable]:focus,
+.stepsEmptyEditable[contenteditable]:focus {
+  outline: none;
+}
+
+.stepBulletText {
+  font-size: 14px;
+  font-family: 'Roboto', sans-serif;
+  color: #212121;
+  line-height: 26px;
+  letter-spacing: -0.28px;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Give inline variable/tool chips a bit more breathing room from surrounding
+   step text so dense steps don't read as a wall of chips. */
+.stepsEditorBody :global(.prompt-chip) {
+  margin: 2px 4px;
+}
+
+.stepsListWithHint {
+  position: relative;
+}
+
+.stepsEmptyHint {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 0;
+  padding: 12px;
+  font-size: 14px;
+  font-family: 'Roboto', sans-serif;
+  color: #9e9e9e;
+  line-height: 20px;
+  letter-spacing: -0.28px;
+  white-space: pre-wrap;
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
+.stepsEmptyEditable {
+  position: relative;
+  z-index: 1;
+  padding: 12px;
+  font-size: 14px;
+  font-family: 'Roboto', sans-serif;
+  color: #212121;
+  line-height: 20px;
+  letter-spacing: -0.28px;
+  min-height: 64px;
+  display: block;
+  width: 100%;
+  background: transparent;
+  box-sizing: border-box;
+  overflow-wrap: break-word;
+  white-space: pre-wrap;
+}
+
+/* ── Steps editor shell (edit mode + toolbar) ──
+ * No max-height/internal scroll — the box has a min-height and grows with
+ * content, same as the create-mode variant below. */
+.stepsEditorShell {
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid #e5e9f0;
+  border-radius: 4px;
+  box-sizing: border-box;
+  min-height: 160px;
+}
+
+.stepsEditorShellFocused {
+  border-color: #1976d2;
+}
+
+.stepsEditorShellCreate {
+  /* Matches STEPS_FIELD_MIN_HEIGHT in ProcedureDetailScreen.tsx. */
+  min-height: 250px;
+}
+
+.stepsEditorBody {
+  flex: 1;
+  overflow: visible;
+  min-height: 100px;
+}
+
+.stepsEditorBodyCreate {
+  flex: 1 1 auto;
+  overflow: visible;
+  min-height: calc(250px - 36px);
+}
+
+.stepsEditorBodyCreate .stepsListNestedEmpty {
+  min-height: 100%;
+}
+
+.stepsEditorBodyCreate .stepsEmptyEditable {
+  min-height: 100%;
+}
+
+/* Create-mode freeform steps — match EmptyHintField paragraph padding (p-md / 12px) */
+.stepsCreatePrompt :global([class*="inputBox"]) {
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+
+.stepsCreatePrompt :global([class*="inputBox"]):focus-within {
+  border: none !important;
+}
+
+.stepsCreatePrompt :global([class*="editor"]) {
+  padding: 12px !important;
+}
+
+.stepsCreatePrompt :global([class*="placeholderOverlay"]) {
+  top: 12px !important;
+  right: 12px !important;
+  left: 12px !important;
+}
+
+.stepsCreatePrompt :global([class*="inputBox"] > [class*="toolbar"]) {
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.stepsCreatePrompt :global([class*="toolbarBtn"]) {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+}
+
+.stepsCreatePrompt :global([class*="toolbarBtn"] svg) {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+/* ── Steps panel (view + edit) ── */
+.stepsList {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: 24px;
+  background: #fff;
+  border: 1px solid #e5e9f0;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.stepsListNested {
+  border: none;
+  border-radius: 0;
+  padding: 24px;
+  min-height: 100%;
+  box-sizing: border-box;
+}
+
+.stepsListNestedEmpty {
+  padding: 0;
+}
+
+.stepsListNestedCreate {
+  min-height: auto;
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stepTitleRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.stepNumberPrefix {
+  font-size: 14px;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 400;
+  color: #212121;
+  line-height: 26px;
+  letter-spacing: -0.28px;
+  flex-shrink: 0;
+}
+
+.stepTitleText {
+  font-size: 14px;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 400;
+  color: #212121;
+  line-height: 26px;
+  letter-spacing: -0.28px;
+  flex: 1;
+  min-width: 0;
+}
+
+.stepBullets {
+  display: flex;
+  flex-direction: column;
+  margin: 4px 0 0;
+  padding-left: 24px;
+}
+
+.stepBulletRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 14px;
+  font-family: 'Roboto', sans-serif;
+  color: #212121;
+  line-height: 26px;
+  letter-spacing: -0.28px;
+  margin-bottom: 10px;
+}
+
+.stepBulletRow:last-child {
+  margin-bottom: 0;
+}
+
+.bulletMarker {
+  flex-shrink: 0;
+  min-width: 14px;
+  line-height: 26px;
+  font-size: 1.15em;
+  color: #212121;
+  text-align: center;
+}
+
+/* ── Inline rich text marks (bold/italic/underline/link) ── */
+.stepTitleText a,
+.stepBulletText a,
+.stepsEmptyEditable a {
+  color: #1976d2;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.stepLink {
+  color: #1976d2;
+  text-decoration: underline;
+}
+
+.stepsEmpty {
+  font-size: 13px;
+  font-family: 'Roboto', sans-serif;
+  color: #9e9e9e;
+  padding: 12px;
+  border: 1px solid #e5e9f0;
+  border-radius: 4px;
+  margin: 0;
+}

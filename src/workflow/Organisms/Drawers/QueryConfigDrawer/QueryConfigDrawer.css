@@ -1,0 +1,132 @@
+.qcd {
+  font-family: 'Roboto', sans-serif;
+}
+
+.qcd__header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 24px;
+  background: #fff;
+}
+
+.qcd__header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.qcd__back {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #555;
+  border-radius: 4px;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.qcd__back:hover {
+  background: #f2f4f7;
+}
+
+.qcd__title {
+  font-size: 14px;
+  line-height: 20px;
+  color: #212121;
+}
+
+.qcd__save {
+  height: 36px;
+  padding: 0 20px;
+  background: #1976d2;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 20px;
+  font-family: inherit;
+  flex-shrink: 0;
+}
+
+.qcd__save:hover {
+  background: #1565c0;
+}
+
+.qcd__body {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 24px 24px 48px;
+}
+
+.qcd__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.qcd__label-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.qcd__label {
+  font-size: 13px;
+  line-height: 20px;
+  color: #212121;
+}
+
+.qcd__checkbox-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.qcd__checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 20px;
+  color: #212121;
+  font-family: 'Roboto', sans-serif;
+}
+
+.qcd__checkbox-box {
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  border: 2px solid #9e9e9e;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.qcd__checkbox-box--checked {
+  border: none;
+  background: #1976d2;
+}
+
+.qcd__checkbox-box .material-symbols-outlined {
+  font-size: 14px;
+  color: #fff;
+  line-height: 1;
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+}
