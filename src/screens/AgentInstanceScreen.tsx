@@ -23,6 +23,8 @@ import { RunDetailView } from './RunDetailView'
 import type { HealthcareLogRow } from '../data/healthcareAgentLogs'
 import { FRONT_DESK_INBOX_CONVERSATION_ID } from '../data/frontDeskCallConversation'
 import { useFeedbackRecommendationsStore } from '../data/FeedbackRecommendationsStoreContext'
+import { REVIEW_RESPONSE_LAUNCHED_BUSINESSES } from '../data/agentWorkflows'
+import { isFullyConfigured, REVIEW_RESPONSE_REQUIRED_TOOLS, type ToolConfigStatus, type ViewerRole } from '../data/resellerTypes'
 
 interface AgentInstanceScreenProps {
   instanceName: string
@@ -32,10 +34,15 @@ interface AgentInstanceScreenProps {
   onOpenIntegrationSettings?: (integrationId: string) => void
   onNavigateToInbox?: (conversationId?: string) => void
   product?: string
+  viewerRole?: ViewerRole
+  businessAgentSetup?: Record<string, ToolConfigStatus>
+  businessPaused?: Record<string, boolean>
+  businesses?: { id: string; name: string }[]
 }
 
 interface LocationRow {
   location: string
+  rowStatus?: string
   interactions?: string
   fcr?: string
   aht?: string
@@ -77,7 +84,17 @@ const TABS: Tab[] = [
 // Tagging & routing agent hides Recommendation and Settings — only Outcomes / Workflow / Logs apply.
 const TAGGING_ROUTING_TABS: Tab[] = TABS.filter((t) => t.id !== 'settings' && t.id !== 'recommendation')
 
+// Review response agent — only Outcomes / Workflow apply (no per-conversation
+// recommendations, logs, or settings for a review-reply agent).
+const REVIEW_RESPONSE_TABS: Tab[] = TABS.filter((t) => t.id === 'outcomes' || t.id === 'workflow')
+
 const METRICS_BY_AGENT: Record<string, Metric[]> = {
+  'Review response agent replying autonomously': [
+    { id: 'generated', value: '0', label: 'Responses generated', info: true, tooltip: 'Total replies drafted by the agent across every business it runs for.' },
+    { id: 'posted', value: '0', label: 'Responses posted', info: true, tooltip: 'Replies actually published to the review site.' },
+    { id: 'responseRate', value: '0%', label: 'Response rate', info: true, tooltip: 'Percentage of eligible reviews that received a reply.' },
+    { id: 'timeSaved', value: '0s', label: 'Time saved', info: true, tooltip: 'Estimated staff time saved by automating review responses.' },
+  ],
   'Front desk agent': [
     { id: 'responded', value: '8,200', label: 'Conversations responded', delta: '1.3%', trend: 'up', info: true, tooltip: 'Total inbound conversations handled by this location in the selected period.' },
     { id: 'resolved', value: '7,380', label: 'Conversations resolved', delta: '2.1%', trend: 'up', info: true, tooltip: 'Conversations closed without requiring human escalation at this location.' },
@@ -242,6 +259,44 @@ const STATUS_VARIANT: Record<string, ChipVariant> = {
   Running: 'success',
   Paused: 'warning',
   Draft: 'neutral',
+  Active: 'success',
+  Incomplete: 'warning',
+}
+
+// Reseller view of "Review response agent replying autonomously" — one row per
+// launched business instead of per location (each business also picks its own
+// locations independently, see AgentDetailsBody).
+const REVIEW_RESPONSE_BUSINESS_COLUMNS: Column<LocationRow>[] = [
+  { key: 'location', label: 'Business', width: 220, sortable: true },
+  {
+    key: 'rowStatus',
+    label: 'Status',
+    width: 120,
+    sortable: true,
+    render: (v) => <Chip label={String(v)} variant={STATUS_VARIANT[String(v)] ?? 'neutral'} />,
+  },
+  { key: 'interactions', label: 'Reviews responded', width: 160, sortable: true },
+  { key: 'fcr', label: 'Reviews responded rate', width: 180, sortable: true },
+  { key: 'timeSaved', label: 'Time saved', width: 120, sortable: true },
+  { key: 'count', label: 'Locations', width: 120, sortable: true },
+]
+
+// Sample per-business location counts — no real per-business location data
+// exists yet in this prototype, so this is illustrative, deterministic seed data.
+// Exported so the Snapshot "Select locations" step can reuse the same counts.
+export const BUSINESS_LOCATION_COUNTS: Record<string, number> = {
+  'B-101': 3, 'B-102': 5, 'B-103': 2, 'B-104': 4, 'B-105': 1, 'B-106': 6, 'B-107': 2, 'B-108': 3,
+}
+
+function buildReviewResponseBusinessRows(businesses: { id: string; name: string }[], businessAgentSetup: Record<string, ToolConfigStatus>, businessPaused: Record<string, boolean>): LocationRow[] {
+  return businesses.map((b, i) => ({
+    location: b.name,
+    rowStatus: businessPaused[b.id] ? 'Paused' : isFullyConfigured(businessAgentSetup[b.id], REVIEW_RESPONSE_REQUIRED_TOOLS) ? 'Active' : 'Incomplete',
+    interactions: String(210 - i * 18),
+    fcr: `${Math.max(60, 88 - i * 3)}%`,
+    timeSaved: `${(i % 4) + 2}m`,
+    count: String(BUSINESS_LOCATION_COUNTS[b.id] ?? 1),
+  }))
 }
 
 const REMINDER_COLUMNS: Column<LocationRow>[] = [
@@ -311,6 +366,10 @@ export function AgentInstanceScreen({
   onOpenIntegrationSettings,
   onNavigateToInbox,
   product,
+  viewerRole = { type: 'reseller' },
+  businessAgentSetup = {},
+  businessPaused = {},
+  businesses = REVIEW_RESPONSE_LAUNCHED_BUSINESSES,
 }: AgentInstanceScreenProps) {
   const [activeTab, setActiveTab] = useState('outcomes')
   const [actionsOpen, setActionsOpen] = useState(false)
@@ -320,9 +379,12 @@ export function AgentInstanceScreen({
 
   // Derive agent name from instance name (e.g. "Front desk agent - North region" → "Front desk agent")
   const agentName = instanceName.replace(/ - .+$/, '')
+  const isReviewResponseInstance = agentName === 'Review response agent replying autonomously'
+  const showBusinessBreakdown = isReviewResponseInstance && viewerRole.type === 'reseller'
   const metrics: Metric[] = METRICS_BY_AGENT[agentName] ?? DEFAULT_METRICS
   const COLUMNS =
-    agentName === 'Reminder agent'        ? REMINDER_COLUMNS
+    showBusinessBreakdown ? REVIEW_RESPONSE_BUSINESS_COLUMNS
+    : agentName === 'Reminder agent'        ? REMINDER_COLUMNS
     : agentName === 'Front desk agent'    ? FRONTDESK_COLUMNS
     : agentName === 'Waitlist agent'      ? WAITLIST_COLUMNS
     : agentName === 'Pre-visit agent'     ? PRE_VISIT_COLUMNS
@@ -331,9 +393,11 @@ export function AgentInstanceScreen({
     : agentName === 'Treatment plan agent'? TREATMENT_PLAN_COLUMNS
     : agentName === 'Tagging & routing agent' ? TAGGING_ROUTING_COLUMNS
     : DEFAULT_COLUMNS
-  const locations = LOCATIONS_BY_AGENT[agentName] ?? LOCATIONS_BY_AGENT['Front desk agent']
+  const locations = showBusinessBreakdown
+    ? buildReviewResponseBusinessRows(businesses, businessAgentSetup, businessPaused)
+    : LOCATIONS_BY_AGENT[agentName] ?? LOCATIONS_BY_AGENT['Front desk agent']
   const isTaggingRouting = agentName === 'Tagging & routing agent'
-  const tabs = isTaggingRouting ? TAGGING_ROUTING_TABS : TABS
+  const tabs = isTaggingRouting ? TAGGING_ROUTING_TABS : isReviewResponseInstance ? REVIEW_RESPONSE_TABS : TABS
 
   const isWorkflowTab = activeTab === 'workflow'
   const isRecommendationTab = activeTab === 'recommendation'

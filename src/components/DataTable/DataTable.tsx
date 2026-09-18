@@ -263,22 +263,40 @@ export function DataTable<T extends Record<string, unknown>>({
                 const row = sortedData[menu.rowIndex]
                 return item.visible ? item.visible(row) : true
               })
-              .map((item) => (
-                <button
-                  key={item.label}
-                  type="button"
-                  onClick={() => {
-                    item.onClick(sortedData[menu.rowIndex])
-                    setMenu(null)
-                  }}
-                  className={`flex w-full items-center justify-between px-md py-md text-left text-body hover:bg-surface-hover ${
-                    item.variant === 'danger' ? 'text-chip-danger-text' : 'text-text-primary'
-                  }`}
-                >
-                  {item.label}
-                  {item.icon && <Icon name={item.icon} size={16} className="shrink-0 text-text-icon" />}
-                </button>
-              ))}
+              .map((item) => {
+                const row = sortedData[menu.rowIndex]
+                const isDisabled = item.disabled ? item.disabled(row) : false
+                const descriptionText = typeof item.description === 'function' ? item.description(row) : item.description
+                return (
+                  <button
+                    key={item.label}
+                    type="button"
+                    aria-disabled={isDisabled}
+                    onClick={() => {
+                      if (isDisabled) return
+                      item.onClick(row)
+                      setMenu(null)
+                    }}
+                    onMouseEnter={
+                      descriptionText && isDisabled
+                        ? (e) => {
+                            const r = e.currentTarget.getBoundingClientRect()
+                            setTooltip({ text: descriptionText, x: r.left + r.width / 2, y: r.bottom + 6 })
+                          }
+                        : undefined
+                    }
+                    onMouseLeave={descriptionText && isDisabled ? () => setTooltip(null) : undefined}
+                    className={`flex w-full items-center justify-between px-md py-md text-left text-body ${
+                      isDisabled
+                        ? 'cursor-not-allowed text-text-tertiary'
+                        : `hover:bg-surface-hover ${item.variant === 'danger' ? 'text-chip-danger-text' : 'text-text-primary'}`
+                    }`}
+                  >
+                    {item.label}
+                    {item.icon && <Icon name={item.icon} size={16} className="shrink-0 text-text-icon" />}
+                  </button>
+                )
+              })}
           </div>
         </>
       )}

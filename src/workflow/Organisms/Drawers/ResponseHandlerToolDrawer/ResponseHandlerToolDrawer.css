@@ -162,6 +162,28 @@
   flex-shrink: 0;
 }
 
+/* Configured (business-level, unlocked) note */
+.rhtd__configured-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background: #e6f4ea;
+  border: 1px solid #b7e1c3;
+  border-radius: 4px;
+  font-size: 13px;
+  line-height: 19px;
+  color: #1e7e34;
+}
+
+.rhtd__configured-icon {
+  font-size: 16px !important;
+  line-height: 19px;
+  color: #1e7e34;
+  flex-shrink: 0;
+}
+
 /* Searchable dropdown (approval workflow) */
 .rhtd__search-select {
   position: relative;

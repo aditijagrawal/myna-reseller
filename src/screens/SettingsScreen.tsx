@@ -185,12 +185,17 @@ const SECTIONS: SettingsSection[] = [
       { icon: '', iconSrc: iconBilling,   label: 'Billing', subtext: 'View invoices, subscriptions, and payment information' },
       { icon: '', iconSrc: iconSupport,   label: 'Support', subtext: 'Access help resources and contact the support team' },
       { icon: 'language',                 label: 'Timezone', subtext: "Configure your account's timezone and regional settings" },
-      { icon: 'grid_view',                label: 'Products', subtext: 'Manage active and inactive products available in your account' },
+      { icon: 'inventory_2',              label: 'Manage products', subtext: 'Manage active and inactive products available in your account' },
+      { icon: 'api',                      label: 'API', subtext: 'Integrate external systems and automate data exchange securely' },
+      { icon: 'group',                    label: 'Groups', subtext: 'Organize locations or users into groups for easier management' },
+      { icon: 'confirmation_number',      label: 'Deal registration', subtext: 'Register and track deals associated with your account' },
+      { icon: 'content_paste',            label: 'Product usage', subtext: 'View usage analytics across your active products' },
+      { icon: 'join_full', label: 'Blueprints', subtext: 'Build a feature in your source account once and apply it to other businesses' },
     ],
   },
 ]
 
-export function SettingsScreen({ initialTab, onTabConsumed, onWebWidgets, onAppointmentWidgets }: { initialTab?: string | null; onTabConsumed?: () => void; onWebWidgets?: () => void; onAppointmentWidgets?: () => void }) {
+export function SettingsScreen({ initialTab, onTabConsumed, onWebWidgets, onAppointmentWidgets, onBlueprints }: { initialTab?: string | null; onTabConsumed?: () => void; onWebWidgets?: () => void; onAppointmentWidgets?: () => void; onBlueprints?: () => void }) {
   const [query, setQuery] = useState('')
   const [activeNav, setActiveNav] = useState(initialTab ?? SETTINGS_NAV[0])
 
@@ -293,7 +298,15 @@ export function SettingsScreen({ initialTab, onTabConsumed, onWebWidgets, onAppo
                       <button
                         key={item.label}
                         type="button"
-                        onClick={item.label === 'Web widgets' ? onWebWidgets : item.label === 'Appointment widgets' ? onAppointmentWidgets : undefined}
+                        onClick={
+                          item.label === 'Web widgets'
+                            ? onWebWidgets
+                            : item.label === 'Appointment widgets'
+                              ? onAppointmentWidgets
+                              : item.label === 'Blueprints'
+                                ? onBlueprints
+                                : undefined
+                        }
                         className="group flex h-[88px] items-center gap-md overflow-hidden rounded-sm px-sm text-left hover:bg-surface-hover"
                       >
                         {item.iconSrc

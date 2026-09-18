@@ -4,7 +4,7 @@ import { subscribeToCustomTools } from '../../../services/agentService';
 import birdeyeLogoUrl from '../../../../assets/birdeye-logo.svg';
 import styles from './EntityTaskBody.module.css';
 
-export default function EntityTaskBody({ initialValues = {}, onFieldChange, onOpenTool, onSwapTool }) {
+export default function EntityTaskBody({ initialValues = {}, onFieldChange, onOpenTool, onSwapTool, viewOnly = false, businessEditableToolIds = [] }) {
   const [taskName, setTaskName] = useState(initialValues.taskName ?? '');
   const [description, setDescription] = useState(initialValues.description ?? '');
   const [selectedTools, setSelectedTools] = useState(initialValues.selectedTools ?? []);
@@ -45,6 +45,7 @@ export default function EntityTaskBody({ initialValues = {}, onFieldChange, onOp
         value={taskName}
         onChange={handleTaskName}
         required
+        readOnly={viewOnly}
       />
       <TextArea
         name="description"
@@ -53,6 +54,7 @@ export default function EntityTaskBody({ initialValues = {}, onFieldChange, onOp
         value={description}
         onChange={handleDescription}
         noFloatingLabel
+        readOnly={viewOnly}
       />
 
       <div className={styles.toolsSection}>
@@ -62,12 +64,21 @@ export default function EntityTaskBody({ initialValues = {}, onFieldChange, onOp
         </div>
 
         <div className={styles.addBox}>
-          {displayedTools.map((tool) => (
+          {displayedTools.map((tool) => {
+            const isBusinessEditable = viewOnly && businessEditableToolIds.includes(tool.id);
+            const isInert = viewOnly && !isBusinessEditable;
+            // Ancestor RHS panel has pointer-events:none while frozen — re-enable
+            // just this row so a business can still reach its own fields.
+            const rowStyle = isBusinessEditable
+              ? { cursor: 'pointer', pointerEvents: 'auto', background: '#eef6ff', border: '1px solid #bcdcff' }
+              : { cursor: isInert ? 'default' : (onOpenTool ? 'pointer' : 'default') };
+            return (
             <div
               key={tool.id}
               className={styles.toolRow}
-              onClick={() => onOpenTool?.(tool.id)}
-              style={{ cursor: onOpenTool ? 'pointer' : 'default' }}
+              onClick={isInert ? undefined : () => onOpenTool?.(tool.id)}
+              style={rowStyle}
+              title={isBusinessEditable ? 'You can configure this — click to edit' : undefined}
             >
               <div className={styles.toolRowMain}>
                 <div className={styles.toolIconWrap}>
@@ -87,31 +98,57 @@ export default function EntityTaskBody({ initialValues = {}, onFieldChange, onOp
                   )}
                 </div>
                 <span className={styles.toolName}>{tool.name}</span>
+                {isBusinessEditable && (
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 2,
+                      marginLeft: 8,
+                      padding: '2px 8px',
+                      borderRadius: 999,
+                      background: '#1967d2',
+                      color: '#fff',
+                      fontSize: 11,
+                      lineHeight: '16px',
+                      fontFamily: 'Roboto, sans-serif',
+                    }}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: 12, lineHeight: 1 }}>edit</span>
+                    You can edit
+                  </span>
+                )}
               </div>
-              <div className={styles.toolRowActions}>
-                <button
-                  type="button"
-                  className={styles.toolActionBtn}
-                  onClick={(e) => { e.stopPropagation(); onOpenTool?.(tool.id); }}
-                  title="Edit tool configuration"
-                >
-                  <span className="material-symbols-outlined" style={{ fontSize: 16, lineHeight: 1, fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20" }}>
-                    edit
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  className={styles.toolActionBtn}
-                  onClick={(e) => { e.stopPropagation(); onSwapTool?.(); }}
-                  title="Replace tool"
-                >
-                  <span className="material-symbols-outlined" style={{ fontSize: 16, lineHeight: 1, fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20" }}>
-                    swap_horiz
-                  </span>
-                </button>
+              <div className={styles.toolRowActions} style={isBusinessEditable ? { pointerEvents: 'auto' } : undefined}>
+                {(!viewOnly || isBusinessEditable) && (
+                  <button
+                    type="button"
+                    className={styles.toolActionBtn}
+                    onClick={(e) => { e.stopPropagation(); onOpenTool?.(tool.id); }}
+                    title="Edit tool configuration"
+                    style={isBusinessEditable ? { pointerEvents: 'auto' } : undefined}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: 16, lineHeight: 1, fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20" }}>
+                      edit
+                    </span>
+                  </button>
+                )}
+                {!viewOnly && (
+                  <button
+                    type="button"
+                    className={styles.toolActionBtn}
+                    onClick={(e) => { e.stopPropagation(); onSwapTool?.(); }}
+                    title="Replace tool"
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: 16, lineHeight: 1, fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20" }}>
+                      swap_horiz
+                    </span>
+                  </button>
+                )}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

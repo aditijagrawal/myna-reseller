@@ -72,7 +72,11 @@ function StandaloneRow({
       }`}
     >
       <span className="min-w-0 flex-1 truncate text-body text-text-primary">{section.label}</span>
-      {section.external && <Icon name="open_in_new" size={16} className="shrink-0 text-text-icon" />}
+      {section.icon ? (
+        <Icon name={section.icon} size={20} fill className="shrink-0 text-primary" />
+      ) : (
+        section.external && <Icon name="open_in_new" size={16} className="shrink-0 text-text-icon" />
+      )}
     </button>
   )
 }

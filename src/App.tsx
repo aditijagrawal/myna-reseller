@@ -1,10 +1,13 @@
 import { useState } from 'react'
+import { AppNavigationProvider } from './data/AppNavigationContext'
 import { FRONT_DESK_INBOX_CONVERSATION_ID } from './data/frontDeskCallConversation'
 import { ProcedureStoreProvider } from './data/ProcedureStoreContext'
 import { FeedbackRecommendationsStoreProvider } from './data/FeedbackRecommendationsStoreContext'
 import { RecommendationOverridesStoreProvider } from './data/RecommendationOverridesStoreContext'
 import type { WizardAgentDraft } from './data/wizardAgentConfig.types'
-import { Icon, IconRail, Link, RecordDetailScreen, SideNav, Toast, TopNav, type NavSection, type RailGroup, type Product } from './components'
+import { Icon, IconRail, Link, RecordDetailScreen, SideNav, Toast, TopNav, ViewerContextSwitcher, type NavSection, type RailGroup, type Product } from './components'
+import { RESELLER_BUSINESSES } from './data/agentWorkflows'
+import { getReviewResponseBusinessStatus, type ToolConfigStatus, type ToolKey, type ViewerRole } from './data/resellerTypes'
 import { ManageAppointmentsScreen, buildAppointmentDetailProps, type AppointmentDetailArgs } from './screens/ManageAppointmentsScreen'
 import { SalesPipelineScreen, buildLeadDetailProps, type LeadDetailArgs } from './screens/SalesPipelineScreen'
 import { ServiceRequestsScreen, buildServiceRequestDetailProps, type ServiceRequestDetailArgs } from './screens/ServiceRequestsScreen'
@@ -38,6 +41,8 @@ import { IntegrationDetailScreen } from './screens/IntegrationDetailScreen'
 import { WebWidgetsScreen } from './screens/WebWidgetsScreen'
 import { AppointmentWidgetsScreen } from './screens/AppointmentWidgetsScreen'
 import { InboxScreen } from './screens/InboxScreen'
+import { SnapshotScreen } from './screens/SnapshotScreen'
+import { BlueprintsScreen } from './screens/BlueprintsScreen'
 import logoSrc from './assets/birdeye-logo.svg'
 
 function EmptyResourceScreen({ label }: { label: string }) {
@@ -63,16 +68,17 @@ const RAIL_GROUPS: RailGroup[] = [
       { id: 'listings', label: 'Listings AI', icon: 'place' },
       { id: 'social', label: 'Social AI', icon: 'workspaces' },
       { id: 'reports', label: 'Reports', icon: 'pie_chart' },
+      { id: 'snapshot', label: 'Snapshots', icon: 'photo_camera' },
       { id: 'scan-listings', label: 'Scan listings', icon: 'screen_search_desktop', external: true },
     ],
   },
 ]
 
 const REVIEWS_NAV_SECTIONS: NavSection[] = [
+  { id: 'reviews-send-request', label: 'Send a review request', standalone: true, icon: 'add_circle' },
   {
     id: 'reviews-actions',
     label: 'Actions',
-    defaultExpanded: true,
     items: [
       { id: 'reviews-all',          label: 'All reviews'         },
       { id: 'reviews-respond',      label: 'Respond to reviews', count: '2.4K' },
@@ -82,22 +88,18 @@ const REVIEWS_NAV_SECTIONS: NavSection[] = [
       { id: 'reviews-fix-failed',   label: 'Fix failed replies'  },
     ],
   },
-  {
-    id: 'reviews-saved-filters',
-    label: 'Saved filters',
-    items: [],
-  },
-  { id: 'reviews-archived', label: 'Archived', standalone: true },
-  { id: 'reviews-reports',  label: 'Reports',  standalone: true, external: true },
+  { id: 'reviews-reports-section', label: 'Reports', items: [] },
+  { id: 'reviews-competitors',     label: 'Competitors', items: [] },
   {
     id: 'reviews-agents',
     label: 'Agents',
     defaultExpanded: true,
     items: [
-      { id: 'review-response-agents',   label: 'Review response agents'   },
       { id: 'review-generation-agents', label: 'Review generation agents' },
+      { id: 'review-response-agents',   label: 'Review response agents'   },
     ],
   },
+  { id: 'reviews-reports', label: 'Reports', standalone: true, external: true },
 ]
 
 const AUTOMOTIVE_NAV_SECTIONS: NavSection[] = [
@@ -306,7 +308,7 @@ function openDetailInNewTab(view: string, args: unknown) {
 
 export function App() {
   const [initialDetailView] = useState(() => parseInitialDetailView())
-  const [railActive, setRailActive] = useState('reviews')
+  const [railActive, setRailActive] = useState('settings')
   const [navActive, setNavActive] = useState(
     () => DETAIL_VIEW_NAV[initialDetailView?.view ?? ''] ?? 'reviews-all',
   )
@@ -319,6 +321,46 @@ export function App() {
   const [agentToastMessage, setAgentToastMessage] = useState('')
   const [agentToastVisible, setAgentToastVisible] = useState(false)
   const [inboxFocusId, setInboxFocusId] = useState<string | null>(null)
+
+  // ─── Reseller ↔ business agent setup (Reviews AI) ────────────────────────
+  const [viewerRole, setViewerRole] = useState<ViewerRole>({ type: 'reseller' })
+  const [businessAgentSetup, setBusinessAgentSetup] = useState<Record<string, ToolConfigStatus>>({
+    // Seeded as already fully configured, for contrast against the rest ("Needs setup").
+    'B-101': { 'assign-tags': true, 'publish-response': true, 'create-ticket': true, 'share-social': true },
+  })
+
+  function handleToolConfigured(toolKey: string) {
+    if (viewerRole.type !== 'business') return
+    setBusinessAgentSetup((prev) => ({
+      ...prev,
+      [viewerRole.id]: { ...prev[viewerRole.id], [toolKey as ToolKey]: true },
+    }))
+  }
+
+  const [businessPaused, setBusinessPaused] = useState<Record<string, boolean>>({})
+
+  function handleToggleBusinessPaused(businessId: string) {
+    setBusinessPaused((prev) => ({ ...prev, [businessId]: !prev[businessId] }))
+  }
+
+  // ─── Snapshot Phase 2: Load snapshot to other accounts ──────────────────
+  // Businesses that received a copy of the review response agent via a
+  // loaded snapshot, in addition to the reseller's own REVIEW_RESPONSE_LAUNCHED_BUSINESSES.
+  const [snapshotTargetBusinessIds, setSnapshotTargetBusinessIds] = useState<string[]>([])
+
+  function handleLoadSnapshotToBusinesses(businessIds: string[]) {
+    setSnapshotTargetBusinessIds((prev) => Array.from(new Set([...prev, ...businessIds])))
+    setBusinessAgentSetup((prev) => {
+      const next = { ...prev }
+      businessIds.forEach((id) => { if (!next[id]) next[id] = {} })
+      return next
+    })
+  }
+
+  function handleDuplicateAgent(agentName: string) {
+    setAgentToastMessage(`Duplicate isn't wired up in this prototype yet — "${agentName}" wasn't copied.`)
+    setAgentToastVisible(true)
+  }
 
   function openIntegrationSettings(integrationId: string) {
     setRailActive('settings')
@@ -373,6 +415,12 @@ export function App() {
     serviceRequestDetail !== null
 
   return (
+    <AppNavigationProvider
+      openSettings={() => {
+        setSettingsSubScreen(null)
+        setRailActive('settings')
+      }}
+    >
     <ProcedureStoreProvider>
     <FeedbackRecommendationsStoreProvider>
     <RecommendationOverridesStoreProvider>
@@ -387,10 +435,10 @@ export function App() {
         activeProduct={activeProduct}
         onProductChange={handleProductChange}
       />
-      {!isEditingWorkflow && !isViewingDetail && !isAgentSetupActive && railActive !== 'settings' && railActive !== 'inbox' && (
+      {!isEditingWorkflow && !isViewingDetail && !isAgentSetupActive && railActive !== 'settings' && railActive !== 'inbox' && railActive !== 'snapshot' && (
         railActive === 'reviews' ? (
         <SideNav
-          title="Reviews AI"
+          title="ReviewsAI"
           sections={REVIEWS_NAV_SECTIONS}
           activeId={navActive}
           onSelect={setNavActive}
@@ -415,7 +463,16 @@ export function App() {
         />
         )
       )}
-      <main className="flex flex-1 flex-col overflow-hidden">
+      <main className="relative flex flex-1 flex-col overflow-hidden">
+        {railActive === 'reviews' && !isEditingWorkflow && (
+          <div className="absolute right-lg top-2 z-30">
+            <ViewerContextSwitcher
+              viewerRole={viewerRole}
+              businesses={RESELLER_BUSINESSES}
+              onChange={setViewerRole}
+            />
+          </div>
+        )}
         {railActive === 'settings' ? (
           settingsSubScreen?.startsWith('integration-') ? (
             <IntegrationDetailScreen
@@ -429,13 +486,19 @@ export function App() {
             <WebWidgetsScreen onBack={() => setSettingsSubScreen(null)} />
           ) : settingsSubScreen === 'appointment-widgets' ? (
             <AppointmentWidgetsScreen onBack={() => setSettingsSubScreen(null)} />
+          ) : settingsSubScreen === 'blueprints' ? (
+            <BlueprintsScreen onBack={() => setSettingsSubScreen(null)} />
           ) : (
-            <SettingsScreen initialTab={settingsTab} onTabConsumed={() => setSettingsTab(null)} onWebWidgets={() => setSettingsSubScreen('web-widgets')} onAppointmentWidgets={() => setSettingsSubScreen('appointment-widgets')} />
+            <SettingsScreen initialTab={settingsTab} onTabConsumed={() => setSettingsTab(null)} onWebWidgets={() => setSettingsSubScreen('web-widgets')} onAppointmentWidgets={() => setSettingsSubScreen('appointment-widgets')} onBlueprints={() => setSettingsSubScreen('blueprints')} />
           )
         ) : railActive === 'inbox' ? (
           <InboxScreen
             initialConversationId={inboxFocusId}
             onInitialConversationConsumed={() => setInboxFocusId(null)}
+          />
+        ) : railActive === 'snapshot' ? (
+          <SnapshotScreen
+            onLoadSnapshot={handleLoadSnapshotToBusinesses}
           />
         ) : isEditingWorkflow ? (
           <>
@@ -449,10 +512,15 @@ export function App() {
                 }}
                 product={activeProduct}
                 wizardDraft={wizardAgentDraft}
+                viewerRole={viewerRole}
+                toolConfigStatus={viewerRole.type === 'business' ? (businessAgentSetup[viewerRole.id] ?? {}) : {}}
+                onToolConfigured={handleToolConfigured}
                 agentStatus={
-                  editingAgentName?.includes('Schedule based') || editingAgentName?.includes('Event trigger based')
-                    ? 'Draft'
-                    : undefined
+                  editingAgentName?.startsWith('Review response agent')
+                    ? getReviewResponseBusinessStatus(viewerRole, businessAgentSetup, businessPaused)
+                    : editingAgentName?.includes('Schedule based') || editingAgentName?.includes('Event trigger based')
+                      ? 'Draft'
+                      : undefined
                 }
               />
             </div>
@@ -604,6 +672,12 @@ export function App() {
               setRailActive('inbox')
             }}
             product={activeProduct}
+            viewerRole={viewerRole}
+            businessAgentSetup={businessAgentSetup}
+            businessPaused={businessPaused}
+            onToggleBusinessPaused={handleToggleBusinessPaused}
+            onDuplicateAgent={handleDuplicateAgent}
+            extraBusinessIds={snapshotTargetBusinessIds}
           />
         ) : appointmentDetail ? (
           <>
@@ -636,5 +710,6 @@ export function App() {
     </RecommendationOverridesStoreProvider>
     </FeedbackRecommendationsStoreProvider>
     </ProcedureStoreProvider>
+    </AppNavigationProvider>
   )
 }

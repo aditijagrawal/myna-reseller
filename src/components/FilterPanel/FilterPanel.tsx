@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { DatePickerModal } from '../DatePickerModal/DatePickerModal'
 import { Icon } from '../Icon/Icon'
 import { Link } from '../Link/Link'
 import { SelectMenu } from '../SelectMenu/SelectMenu'
@@ -63,7 +64,10 @@ export function FilterPanel({
         <div className="flex flex-1 flex-col gap-sm overflow-y-auto px-xl pb-xl">
           <div className="flex flex-col gap-sm">
             {fields.map((field) => {
-              const count = selections[field.id]?.length ?? 0
+              const isDateRange = field.type === 'date-range'
+              const values = selections[field.id] ?? []
+              const count = values.length
+              const displayText = isDateRange && values[0] ? values[0] : field.label
               return (
                 <button
                   key={field.id}
@@ -78,10 +82,14 @@ export function FilterPanel({
                       count > 0 ? 'text-text-primary' : 'text-text-secondary'
                     }`}
                   >
-                    {field.label}
-                    {count > 0 && ` (${count})`}
+                    {displayText}
+                    {!isDateRange && count > 0 && ` (${count})`}
                   </span>
-                  <Icon name="expand_more" size={20} className="shrink-0 text-text-icon" />
+                  <Icon
+                    name={isDateRange ? 'calendar_today' : 'expand_more'}
+                    size={isDateRange ? 16 : 20}
+                    className="shrink-0 text-text-icon"
+                  />
                 </button>
               )
             })}
@@ -99,8 +107,19 @@ export function FilterPanel({
         </div>
       </div>
 
+      {/* Date range popover */}
+      {activeField && anchor && activeField.type === 'date-range' && (
+        <DatePickerModal
+          open
+          anchor={{ top: anchor.top, left: anchor.left }}
+          variant="range"
+          onClose={() => setOpenId(null)}
+          onApply={(value) => updateSelections({ ...selections, [activeField.id]: [value] })}
+        />
+      )}
+
       {/* Select menu popover */}
-      {activeField && anchor && (
+      {activeField && anchor && activeField.type !== 'date-range' && (
         <>
           <div className="fixed inset-0 z-[105]" onClick={() => setOpenId(null)} />
           <div
@@ -113,7 +132,7 @@ export function FilterPanel({
               options={activeField.options ?? []}
               value={selections[activeField.id] ?? []}
               multi={activeField.multi ?? true}
-              searchable={false}
+              searchable={(activeField.options?.length ?? 0) > 6}
               onChange={(val) => updateSelections({ ...selections, [activeField.id]: val })}
             />
           </div>

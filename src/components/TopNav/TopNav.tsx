@@ -1,4 +1,5 @@
 import { Icon } from '../Icon/Icon'
+import { useAppNavigation } from '../../data/AppNavigationContext'
 import { TopNavProps } from './TopNav.types'
 
 function IconButton({
@@ -22,7 +23,10 @@ function IconButton({
   )
 }
 
-export function TopNav({ title, avatarUrl, initials = 'S', onAdd, onHelp, onMenu }: TopNavProps) {
+export function TopNav({ title, avatarUrl, initials = 'S', onAdd, onHelp, onSettings, onMenu }: TopNavProps) {
+  const appNavigation = useAppNavigation()
+  const handleSettings = onSettings ?? appNavigation?.openSettings
+
   return (
     <header className="flex h-14 items-center gap-xs border-b border-border bg-surface px-2xl">
       {title && (
@@ -34,7 +38,11 @@ export function TopNav({ title, avatarUrl, initials = 'S', onAdd, onHelp, onMenu
       </IconButton>
 
       <IconButton label="Help" onClick={onHelp}>
-        <Icon name="help" size={20} className="text-text-icon" />
+        <Icon name="help" size={20} weight={300} className="text-text-icon" />
+      </IconButton>
+
+      <IconButton label="Settings" onClick={handleSettings}>
+        <Icon name="settings" size={20} weight={300} className="text-text-icon" />
       </IconButton>
 
       <span className="flex size-7 items-center justify-center">

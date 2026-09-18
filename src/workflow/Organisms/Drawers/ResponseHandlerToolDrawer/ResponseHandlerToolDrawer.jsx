@@ -53,7 +53,21 @@ function NativeDrawer({ isOpen, onClose, children }) {
   );
 }
 
-export default function ResponseHandlerToolDrawer({ isOpen, onClose, initialValues = {}, onFieldChange }) {
+const APPROVAL_WORKFLOW_OPTIONS = [
+  { value: 'manager_review', label: 'Manager review' },
+  { value: 'marketing_review', label: 'Marketing lead review' },
+  { value: 'legal_review', label: 'Legal review' },
+];
+
+export default function ResponseHandlerToolDrawer({
+  isOpen,
+  onClose,
+  initialValues = {},
+  onFieldChange,
+  locked = true,
+  configured = false,
+  onConfigured,
+}) {
   const [responseText, setResponseText] = useState(initialValues.responseText ?? '{{Review Response}}');
   const [responseHandling, setResponseHandling] = useState(initialValues.responseHandling ?? 'post_directly');
   const [responseDelay, setResponseDelay] = useState(initialValues.responseDelay ?? '');
@@ -66,6 +80,11 @@ export default function ResponseHandlerToolDrawer({ isOpen, onClose, initialValu
   };
 
   const saveDisabled = !dirty;
+  const handleSave = () => {
+    if (saveDisabled) return;
+    onConfigured?.();
+    onClose();
+  };
 
   return (
     <NativeDrawer isOpen={isOpen} onClose={onClose}>
@@ -80,7 +99,7 @@ export default function ResponseHandlerToolDrawer({ isOpen, onClose, initialValu
           <button
             type="button"
             className={`rhtd__save${saveDisabled ? ' rhtd__save--disabled' : ''}`}
-            onClick={saveDisabled ? undefined : onClose}
+            onClick={handleSave}
             disabled={saveDisabled}
           >
             Save
@@ -140,18 +159,36 @@ export default function ResponseHandlerToolDrawer({ isOpen, onClose, initialValu
               <span className="rhtd__label">
                 Select approval workflow<span className="rhtd__required"> *</span>
               </span>
-              <div className="rhtd__locked-field">
-                <button type="button" className="tc-dropdown__trigger tc-dropdown__trigger--readonly rhtd__locked-trigger" disabled>
-                  <span className="tc-dropdown__value tc-dropdown__value--placeholder">
-                    {approvalWorkflow || 'Select approval workflow'}
-                  </span>
-                  <span className="material-symbols-outlined tc-dropdown__chevron">expand_more</span>
-                </button>
-                <div className="rhtd__locked-note">
-                  <span className="material-symbols-outlined rhtd__locked-icon">lock</span>
-                  <span>This field can only be configured at the business level. Log in to the individual business account to set its approval workflow.</span>
+              {locked ? (
+                <div className="rhtd__locked-field">
+                  <button type="button" className="tc-dropdown__trigger tc-dropdown__trigger--readonly rhtd__locked-trigger" disabled>
+                    <span className="tc-dropdown__value tc-dropdown__value--placeholder">
+                      {approvalWorkflow || 'Select approval workflow'}
+                    </span>
+                    <span className="material-symbols-outlined tc-dropdown__chevron">expand_more</span>
+                  </button>
+                  <div className="rhtd__locked-note">
+                    <span className="material-symbols-outlined rhtd__locked-icon">lock</span>
+                    <span>This field can only be configured at the business level. Log in to the individual business account to set its approval workflow.</span>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <>
+                  {configured && (
+                    <div className="rhtd__configured-note">
+                      <span className="material-symbols-outlined rhtd__configured-icon">check_circle</span>
+                      <span>Configured for this business. Change the selection and save to update it.</span>
+                    </div>
+                  )}
+                  <SingleSelect
+                    name="rhtd-approval-workflow"
+                    selected={approvalWorkflow}
+                    options={APPROVAL_WORKFLOW_OPTIONS}
+                    onChange={(opt) => { setApprovalWorkflow(opt.value); emit('approvalWorkflow', opt.value); }}
+                    placeholder="Select approval workflow"
+                  />
+                </>
+              )}
             </div>
           )}
         </div>

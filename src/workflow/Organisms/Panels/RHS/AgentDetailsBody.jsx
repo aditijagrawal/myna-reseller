@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FormInput, TextArea } from '../../../elemental-stubs';
 import LocationsDrawer from '../../../RHSDrawer/LocationsDrawer.jsx';
+import { RESELLER_BUSINESSES } from '../../../../data/agentWorkflows';
 import styles from './AgentDetailsBody.module.css';
 
 const DEFAULT_LOCATIONS = [
@@ -18,96 +19,114 @@ const DEFAULT_LOCATIONS = [
 
 const VISIBLE_COUNT = 4;
 
-/* Reseller mode — businesses under the reseller account (used when the
-   workflow's __start__ details carry a `businesses` array instead of
-   `locations`). */
-const ALL_BUSINESSES = [
-  { id: 'B-101', name: 'Bright Smile Dental Studio' },
-  { id: 'B-102', name: 'Lakeside Auto Group' },
-  { id: 'B-103', name: 'Sunrise Family Medicine' },
-  { id: 'B-104', name: 'Metro Property Partners' },
-  { id: 'B-105', name: 'Golden Gate Fitness' },
-  { id: 'B-106', name: 'Harborview Restaurants' },
-  { id: 'B-107', name: 'Cedar Lane Veterinary' },
-  { id: 'B-108', name: 'Summit Legal Services' },
-  { id: 'B-109', name: 'Bluebird Home Services' },
-  { id: 'B-110', name: 'Pinecrest Hospitality' },
-];
+/* Normalise — stored as strings OR as { id, name } objects */
+const normalise = (raw) => (raw || []).map((l) => (typeof l === 'string' ? { id: l, name: l } : l));
 
-export default function AgentDetailsBody({ values: externalValues, onChange, viewOnly = false }) {
+/* One entity picker (Businesses OR Locations) — chips + edit button + its own drawer. */
+function EntityChipsField({ label, entities, entityNoun, selected, onSave, viewOnly }) {
+  const [showDrawer, setShowDrawer] = useState(false);
+  const [showAllChips, setShowAllChips] = useState(false);
+
+  const chips = normalise(selected);
+  const visibleChips = showAllChips ? chips : chips.slice(0, VISIBLE_COUNT);
+  const overflowCount = chips.length - VISIBLE_COUNT;
+
+  const handleRemoveChip = (id) => onSave(chips.filter((c) => c.id !== id));
+
+  if (showDrawer) {
+    return (
+      <LocationsDrawer
+        selectedIds={chips.map((c) => c.id)}
+        onBack={() => setShowDrawer(false)}
+        onSave={(sel) => { onSave(sel); setShowDrawer(false); }}
+        title={label}
+        entities={entities}
+        description={`Choose the ${entityNoun}s this agent will work for. Select by`}
+        selectByOptions={[{ label: label.replace(/s$/, ''), value: entityNoun }]}
+        entityNoun={entityNoun}
+        entityNounPlural={`${entityNoun}s`}
+      />
+    );
+  }
+
+  return (
+    <div className={styles.locationsField}>
+      <div className={styles.locationsLabel}>
+        <span className={styles.locationsLabelText}>{label}</span>
+        <span className={styles.locationsRequired}>*</span>
+        {!viewOnly && (
+          <button
+            className={styles.locationsEditBtn}
+            type="button"
+            onClick={() => setShowDrawer(true)}
+            title={`Edit ${label.toLowerCase()}`}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 16, lineHeight: 1, fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20" }}>
+              edit
+            </span>
+          </button>
+        )}
+      </div>
+
+      <div className={styles.chipsRow}>
+        {visibleChips.map((chip) => (
+          <span key={chip.id} className={styles.locationChip}>
+            <span className={styles.locationChipName}>{chip.name}</span>
+            {!viewOnly && (
+              <button
+                type="button"
+                className={styles.locationChipClose}
+                onClick={() => handleRemoveChip(chip.id)}
+                title="Remove"
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: 12, lineHeight: 1, fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20" }}>
+                  close
+                </span>
+              </button>
+            )}
+          </span>
+        ))}
+      </div>
+
+      {!showAllChips && overflowCount > 0 && (
+        <button className={styles.moreLink} type="button" onClick={() => setShowAllChips(true)}>
+          + {overflowCount} more
+        </button>
+      )}
+    </div>
+  );
+}
+
+export default function AgentDetailsBody({ values: externalValues, onChange, viewOnly = false, viewerRole = { type: 'reseller' } }) {
   const [internalValues, setInternalValues] = useState({
     agentName: '',
     goals: '',
     outcomes: '',
     locations: [],
   });
-  const [showLocations, setShowLocations] = useState(false);
-  const [showAllChips, setShowAllChips] = useState(false);
 
   const values = externalValues ?? internalValues;
 
-  /* Business mode — the agent is scoped to reseller businesses, not locations */
+  /* Business mode — the agent is scoped to reseller businesses, not just locations */
   const isBusinessMode = Array.isArray(values.businesses);
-  const entityField = isBusinessMode ? 'businesses' : 'locations';
-  const entityLabel = isBusinessMode ? 'Businesses' : 'Locations';
-
-  /* Normalise locations — stored as strings OR as { id, name } objects */
-  const normaliseLocations = (raw) =>
-    (raw || []).map((l) =>
-      typeof l === 'string' ? { id: l, name: l } : l
-    );
-
-  const rawEntities = values[entityField] && values[entityField].length > 0
-    ? values[entityField]
-    : (isBusinessMode ? [] : DEFAULT_LOCATIONS);
-
-  const locations = normaliseLocations(rawEntities);
-
-  const handleRemoveChip = (id) => {
-    updateLocations(locations.filter((l) => l.id !== id));
-  };
+  const isBusinessViewer = viewerRole?.type === 'business';
+  // A business can never rename the agent or edit its goals/outcomes — those
+  // are reseller-owned structure. Locations stays editable regardless (see
+  // the field below) since each business manages its own locations.
+  const structureReadOnly = viewOnly || isBusinessViewer;
 
   /* Generic text-field setter */
   const set = onChange
     ? (field) => (e) => onChange(field, e.target.value)
     : (field) => (e) => setInternalValues((v) => ({ ...v, [field]: e.target.value }));
 
-  const updateLocations = (updated) => {
+  const updateField = (field) => (updated) => {
     if (onChange) {
-      onChange(entityField, updated);
+      onChange(field, updated);
     } else {
-      setInternalValues((v) => ({ ...v, [entityField]: updated }));
+      setInternalValues((v) => ({ ...v, [field]: updated }));
     }
   };
-
-  const handleLocationsSave = (selected) => {
-    updateLocations(selected);
-    setShowLocations(false);
-  };
-
-  /* LocationsDrawer replaces the whole body when open */
-  if (showLocations) {
-    return (
-      <LocationsDrawer
-        selectedIds={normaliseLocations(values[entityField]).map((l) => l.id)}
-        onBack={() => setShowLocations(false)}
-        onSave={handleLocationsSave}
-        {...(isBusinessMode ? {
-          title: 'Businesses',
-          entities: ALL_BUSINESSES,
-          description: 'Choose the businesses this agent will work for. Select by',
-          selectByOptions: [{ label: 'Business', value: 'business' }],
-          entityNoun: 'business',
-          entityNounPlural: 'businesses',
-        } : {})}
-      />
-    );
-  }
-
-  const visibleLocations = showAllChips
-    ? locations
-    : locations.slice(0, VISIBLE_COUNT);
-  const overflowCount = locations.length - VISIBLE_COUNT;
 
   return (
     <div className={styles.body}>
@@ -118,7 +137,7 @@ export default function AgentDetailsBody({ values: externalValues, onChange, vie
         value={values.agentName}
         onChange={set('agentName')}
         required
-        readOnly={viewOnly}
+        readOnly={structureReadOnly}
       />
       <TextArea
         name="goals"
@@ -128,7 +147,7 @@ export default function AgentDetailsBody({ values: externalValues, onChange, vie
         required
         noFloatingLabel
         rows={6}
-        readOnly={viewOnly}
+        readOnly={structureReadOnly}
       />
       <TextArea
         name="outcomes"
@@ -136,57 +155,33 @@ export default function AgentDetailsBody({ values: externalValues, onChange, vie
         value={values.outcomes}
         onChange={set('outcomes')}
         noFloatingLabel
-        rows={viewOnly ? 12 : 6}
-        readOnly={viewOnly}
+        rows={structureReadOnly ? 12 : 6}
+        readOnly={structureReadOnly}
       />
 
-      {/* ─── Locations ─── */}
-      <div className={styles.locationsField}>
-        <div className={styles.locationsLabel}>
-          <span className={styles.locationsLabelText}>{entityLabel}</span>
-          <span className={styles.locationsRequired}>*</span>
-          {!viewOnly && (
-            <button
-              className={styles.locationsEditBtn}
-              type="button"
-              onClick={() => setShowLocations(true)}
-              title={`Edit ${entityLabel.toLowerCase()}`}
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: 16, lineHeight: 1, fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20" }}>
-                edit
-              </span>
-            </button>
-          )}
-        </div>
+      {isBusinessMode && !isBusinessViewer && (
+        /* Reseller scope: pick which businesses this agent runs for, and
+           optionally narrow further to specific locations across them. */
+        <EntityChipsField
+          label="Businesses"
+          entityNoun="business"
+          entities={RESELLER_BUSINESSES}
+          selected={values.businesses}
+          onSave={updateField('businesses')}
+          viewOnly={viewOnly}
+        />
+      )}
 
-        {/* Location chips — grey pill with name + × remove button */}
-        <div className={styles.chipsRow}>
-          {visibleLocations.map((loc) => (
-            <span key={loc.id} className={styles.locationChip}>
-              <span className={styles.locationChipName}>{loc.name}</span>
-              {!viewOnly && (
-                <button
-                  type="button"
-                  className={styles.locationChipClose}
-                  onClick={() => handleRemoveChip(loc.id)}
-                  title="Remove"
-                >
-                  <span className="material-symbols-outlined" style={{ fontSize: 12, lineHeight: 1, fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20" }}>
-                    close
-                  </span>
-                </button>
-              )}
-            </span>
-          ))}
-        </div>
-
-        {/* "+ N more" link */}
-        {!showAllChips && overflowCount > 0 && (
-          <button className={styles.moreLink} type="button" onClick={() => setShowAllChips(true)}>
-            + {overflowCount} more
-          </button>
-        )}
-      </div>
+      {/* Locations — same field/behavior for every viewer, including a
+          business logged into their own account (isBusinessMode or not). */}
+      <EntityChipsField
+        label="Locations"
+        entityNoun="location"
+        entities={DEFAULT_LOCATIONS}
+        selected={values.locations && values.locations.length > 0 ? values.locations : DEFAULT_LOCATIONS}
+        onSave={updateField('locations')}
+        viewOnly={viewOnly}
+      />
     </div>
   );
 }

@@ -3,6 +3,26 @@ export interface AgentWorkflow {
   nodeDetails: Record<string, any>
 }
 
+// Reseller's full business roster — single source of truth for business identity,
+// used by the __start__ businesses picker, the viewer-context switcher, and
+// per-business tool-setup completion state (all keyed by `id`).
+export const RESELLER_BUSINESSES = [
+  { id: 'B-101', name: 'Bright Smile Dental Studio' },
+  { id: 'B-102', name: 'Lakeside Auto Group' },
+  { id: 'B-103', name: 'Sunrise Family Medicine' },
+  { id: 'B-104', name: 'Metro Property Partners' },
+  { id: 'B-105', name: 'Golden Gate Fitness' },
+  { id: 'B-106', name: 'Harborview Restaurants' },
+  { id: 'B-107', name: 'Cedar Lane Veterinary' },
+  { id: 'B-108', name: 'Summit Legal Services' },
+  { id: 'B-109', name: 'Bluebird Home Services' },
+  { id: 'B-110', name: 'Pinecrest Hospitality' },
+]
+
+// Businesses the "Review response agent replying autonomously" template has
+// actually been launched to (a subset of the full roster above).
+export const REVIEW_RESPONSE_LAUNCHED_BUSINESSES = RESELLER_BUSINESSES.slice(0, 8)
+
 // Helper — all triggers use Conversation trigger subtype
 const CONV_TRIGGER = {
   flowType: 'trigger' as const,
@@ -1047,6 +1067,23 @@ const SPAM_BRANCH_OPTIONS = {
   ],
 }
 
+const RATING_BRANCH_OPTIONS = {
+  field: [
+    { value: 'Review_rating', label: 'Review rating' },
+  ],
+  operator: [
+    { value: 'lte', label: 'Is less than or equal to' },
+    { value: 'gte', label: 'Is greater than or equal to' },
+  ],
+  value: [
+    { value: '1', label: '1' },
+    { value: '2', label: '2' },
+    { value: '3', label: '3' },
+    { value: '4', label: '4' },
+    { value: '5', label: '5' },
+  ],
+}
+
 const REVIEW_RESPONSE_AUTONOMOUS_NODES = [
   { id: 'rra-1', flowType: 'trigger', data: { title: 'New review is received or updated', subtype: 'Review received', hasToggle: true, toggleEnabled: true, hasAiIcon: false, titlePlaceholder: 'Enter trigger name', descriptionPlaceholder: 'Enter description' } },
   { id: 'rra-2', flowType: 'task',    data: { title: 'Triage review',       subtype: 'Custom', hasToggle: true, toggleEnabled: true, hasAiIcon: true,  titlePlaceholder: 'Enter task name',   descriptionPlaceholder: 'Enter description' } },
@@ -1064,16 +1101,7 @@ const REVIEW_RESPONSE_AUTONOMOUS_NODE_DETAILS: Record<string, any> = {
       '4. Replies match the review language, stay on brand, and are kept under 60 words',
     // Reseller scope — this agent is configured across the reseller's businesses,
     // not per-location (AgentDetailsBody switches to business mode on this key).
-    businesses: [
-      { id: 'B-101', name: 'Bright Smile Dental Studio' },
-      { id: 'B-102', name: 'Lakeside Auto Group' },
-      { id: 'B-103', name: 'Sunrise Family Medicine' },
-      { id: 'B-104', name: 'Metro Property Partners' },
-      { id: 'B-105', name: 'Golden Gate Fitness' },
-      { id: 'B-106', name: 'Harborview Restaurants' },
-      { id: 'B-107', name: 'Cedar Lane Veterinary' },
-      { id: 'B-108', name: 'Summit Legal Services' },
-    ],
+    businesses: REVIEW_RESPONSE_LAUNCHED_BUSINESSES,
   },
   'rra-1': {
     triggerName: 'New review is received or updated',
@@ -1136,6 +1164,7 @@ const REVIEW_RESPONSE_AUTONOMOUS_NODE_DETAILS: Record<string, any> = {
       { id: 'rra-5', flowType: 'task', data: { title: 'Review analysis',     subtype: 'Custom',      hasToggle: true, toggleEnabled: true, hasAiIcon: true,  titlePlaceholder: 'Enter task name', descriptionPlaceholder: 'Enter description' } },
       { id: 'rra-6', flowType: 'task', data: { title: 'Response generation', subtype: 'Custom',      hasToggle: true, toggleEnabled: true, hasAiIcon: true,  titlePlaceholder: 'Enter task name', descriptionPlaceholder: 'Enter description' } },
       { id: 'rra-7', flowType: 'task', data: { title: 'Publish responses',   subtype: 'Integration', hasToggle: true, toggleEnabled: true, hasAiIcon: false, titlePlaceholder: 'Enter task name', descriptionPlaceholder: 'Publish responses' } },
+      { id: 'rra-8', flowType: 'branch', data: { title: 'Based on review rating', subtype: 'Branch', hasToggle: true, toggleEnabled: true, hasAiIcon: false, titlePlaceholder: 'Enter branch name', descriptionPlaceholder: 'Escalate low ratings, amplify high ratings' } },
     ],
   },
   'rra-4': {
@@ -1182,6 +1211,50 @@ const REVIEW_RESPONSE_AUTONOMOUS_NODE_DETAILS: Record<string, any> = {
     responseText: '{{Review Response}}',
     responseHandling: 'post_directly',
     responseDelay: '15m',
+  },
+  'rra-8': {
+    basedOn: 'conditions',
+    branches: [
+      { id: 'rra-8-path-1', name: 'Rating is 1–2 stars' },
+      { id: 'rra-8-path-2', name: 'Rating is 4–5 stars', isFallback: true },
+    ],
+  },
+  'rra-8-path-1': {
+    branchName: 'Rating is 1–2 stars',
+    description: 'The review analysis identified a low rating that should be escalated internally.',
+    conditions: [
+      { id: 1, fieldValue: 'Review_rating', operatorValue: 'lte', valueValue: '2' },
+    ],
+    conditionOptions: RATING_BRANCH_OPTIONS,
+    parentId: 'rra-8',
+    isBranchPath: true,
+    nodes: [
+      { id: 'rra-9', flowType: 'task', data: { title: 'Create ticket in Birdeye', subtype: 'Integration', hasToggle: true, toggleEnabled: true, hasAiIcon: false, titlePlaceholder: 'Enter task name', descriptionPlaceholder: 'Escalate the review as a ticket' } },
+    ],
+  },
+  'rra-8-path-2': {
+    branchName: 'Rating is 4–5 stars',
+    description: 'The review analysis identified a high rating worth amplifying on social.',
+    conditions: [
+      { id: 1, fieldValue: 'Review_rating', operatorValue: 'gte', valueValue: '4' },
+    ],
+    conditionOptions: RATING_BRANCH_OPTIONS,
+    parentId: 'rra-8',
+    isBranchPath: true,
+    isFallback: true,
+    nodes: [
+      { id: 'rra-10', flowType: 'task', data: { title: 'Share review to social', subtype: 'Integration', hasToggle: true, toggleEnabled: true, hasAiIcon: false, titlePlaceholder: 'Enter task name', descriptionPlaceholder: 'Share the review to social channels' } },
+    ],
+  },
+  'rra-9': {
+    taskName: 'Create ticket in Birdeye',
+    description: 'Creates a ticket for the negative review and assigns it to the right team/person so it gets handled quickly.',
+    selectedTools: ['create-ticket'],
+  },
+  'rra-10': {
+    taskName: 'Share review to social',
+    description: "Formats the review as a social post using the business's own brand assets and shares it to their configured social channels.",
+    selectedTools: ['share-social'],
   },
 }
 

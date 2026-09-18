@@ -21,6 +21,8 @@ import {
 import { AgentInstanceScreen } from './AgentInstanceScreen'
 import { NewFrontdeskAgentSetupScreen } from './NewFrontdeskAgentSetupScreen'
 import type { WizardAgentDraft } from '../data/wizardAgentConfig.types'
+import { RESELLER_BUSINESSES, REVIEW_RESPONSE_LAUNCHED_BUSINESSES } from '../data/agentWorkflows'
+import { getReviewResponseBusinessStatus, isFullyConfigured, REVIEW_RESPONSE_REQUIRED_TOOLS, type ToolConfigStatus, type ViewerRole } from '../data/resellerTypes'
 
 interface AgentDetailScreenProps {
   agentName: string
@@ -29,13 +31,21 @@ interface AgentDetailScreenProps {
   onAgentSetupActiveChange?: (active: boolean) => void
   onNavigateToInbox?: (conversationId?: string) => void
   product?: string
+  viewerRole?: ViewerRole
+  businessAgentSetup?: Record<string, ToolConfigStatus>
+  businessPaused?: Record<string, boolean>
+  onToggleBusinessPaused?: (businessId: string) => void
+  onDuplicateAgent?: (agentName: string) => void
+  extraBusinessIds?: string[]
 }
 
 interface AgentInstance {
   name: string
   status: string
+  issueCount?: string
   channels: string
   locations: string
+  businesses?: string
   interactions?: string
   fcr?: string
   aht?: string
@@ -75,8 +85,11 @@ const TABS: Tab[] = [
 
 const STATUS_VARIANT: Record<string, ChipVariant> = {
   Running: 'success',
-  Paused:  'warning',
+  Paused:  'neutral',
   Draft:   'neutral',
+  Live: 'success',
+  Active: 'success',
+  'Needs setup': 'warning',
 }
 
 interface RegionRow {
@@ -384,7 +397,7 @@ function CreateAgentEmptyState({
   )
 }
 
-export function AgentDetailScreen({ agentName, onEditAgent, onOpenIntegrationSettings, onAgentSetupActiveChange, onNavigateToInbox, product }: AgentDetailScreenProps) {
+export function AgentDetailScreen({ agentName, onEditAgent, onOpenIntegrationSettings, onAgentSetupActiveChange, onNavigateToInbox, product, viewerRole = { type: 'reseller' }, businessAgentSetup = {}, businessPaused = {}, onToggleBusinessPaused, onDuplicateAgent, extraBusinessIds = [] }: AgentDetailScreenProps) {
   const [activeTab, setActiveTab] = useState('agents')
   const [libraryView, setLibraryView] = useState<LibraryView>('grid')
   const [customizeOpen, setCustomizeOpen] = useState(false)
@@ -464,10 +477,46 @@ export function AgentDetailScreen({ agentName, onEditAgent, onOpenIntegrationSet
     { id: 'escalation', value: '11%', label: 'Escalation rate', info: true, tooltip: 'Percentage of interactions escalated to a human agent. Lower is generally better.' },
   ]
 
+  const isReviewResponseAgentsList = agentName === 'Review response agents'
+  const reviewResponseAgentName = 'Review response agent replying autonomously'
+  // Businesses this agent has been launched to — the reseller's own launched
+  // set plus any businesses that received a copy via a loaded snapshot.
+  const launchedBusinesses = [...REVIEW_RESPONSE_LAUNCHED_BUSINESSES]
+  extraBusinessIds.forEach((id) => {
+    if (launchedBusinesses.some((b) => b.id === id)) return
+    const business = RESELLER_BUSINESSES.find((b) => b.id === id)
+    if (business) launchedBusinesses.push(business)
+  })
+  // Per-agent business count (not a page-level metric) — a reseller can launch
+  // different agent instances to different subsets of businesses, so this
+  // belongs on each agent's own row, not summarized once for the whole screen.
+  const businessesActiveCount = launchedBusinesses.filter((b) => !businessPaused[b.id] && isFullyConfigured(businessAgentSetup[b.id], REVIEW_RESPONSE_REQUIRED_TOOLS)).length
+
   const metrics: Metric[] = METRICS_BY_AGENT[agentName] ?? DEFAULT_METRICS
 
   const regions = REGIONS_BY_AGENT[agentName] ?? DEFAULT_REGIONS
-  const data: AgentInstance[] = agentName === 'Review response agents' ? [] : regions.map((r) => ({
+  const isPausedByThisBusiness = viewerRole.type === 'business' && !!businessPaused[viewerRole.id]
+  const reviewResponseStatus = getReviewResponseBusinessStatus(viewerRole, businessAgentSetup, businessPaused)
+  const reviewResponseBusinesses = viewerRole.type === 'reseller'
+    ? `${businessesActiveCount}/${launchedBusinesses.length} active`
+    : undefined
+
+  // A business on a reseller-deployed agent gets exactly four actions —
+  // complete setup, pause/resume, duplicate, and view outcomes/reports.
+  // No edit (structure), no delete — those stay with the reseller.
+  const businessReviewResponseRowMenuItems: Array<{ label: string; onClick: (row: AgentInstance) => void; variant?: 'danger' }> = [
+    { label: 'Complete setup', onClick: (row) => onEditAgent?.(row.name) },
+    {
+      label: isPausedByThisBusiness ? 'Resume' : 'Pause',
+      onClick: () => { if (viewerRole.type === 'business') onToggleBusinessPaused?.(viewerRole.id) },
+    },
+    { label: 'Duplicate', onClick: (row) => onDuplicateAgent?.(row.name) },
+    { label: 'View outcomes', onClick: (row) => setSelectedInstance(row.name) },
+    { label: 'Reports', onClick: () => {} },
+  ]
+  const data: AgentInstance[] = isReviewResponseAgentsList
+    ? [{ name: reviewResponseAgentName, status: reviewResponseStatus, issueCount: '2', channels: '—', locations: '—', businesses: reviewResponseBusinesses }]
+    : regions.map((r) => ({
     name: `${agentName} - ${r.region}`,
     status: r.status,
     channels: r.channels,
@@ -523,11 +572,27 @@ export function AgentDetailScreen({ agentName, onEditAgent, onOpenIntegrationSet
     {
       key: 'status',
       label: 'Status',
-      width: 110,
+      width: 160,
       sortable: true,
-      render: (v) => <Chip label={String(v)} variant={STATUS_VARIANT[String(v)] ?? 'neutral'} />,
+      render: (v, row) => {
+        const count = Number(row.issueCount ?? 0)
+        return (
+          <div className="flex items-center gap-sm">
+            <Chip label={String(v)} variant={STATUS_VARIANT[String(v)] ?? 'neutral'} />
+            {count > 0 && (
+              <span className="flex shrink-0 items-center gap-xs text-small text-warning">
+                <Icon name="schedule" size={16} className="text-warning" />
+                {count} {count === 1 ? 'issue' : 'issues'}
+              </span>
+            )}
+          </div>
+        )
+      },
     },
     ...((isTaggingRouting || isReviewResponse) ? [] : [{ key: 'channels' as keyof AgentInstance, label: 'Channels', width: 140, sortable: true }]),
+    ...(isReviewResponse && viewerRole.type === 'reseller' ? [
+      { key: 'businesses' as keyof AgentInstance, label: 'Businesses', width: 130, sortable: true },
+    ] : []),
     ...(isReviewResponse ? [
       { key: 'interactions' as keyof AgentInstance, label: 'Reviews responded', width: 150, sortable: true },
       { key: 'fcr' as keyof AgentInstance,          label: 'Reviews responded rate', width: 180, sortable: true },
@@ -590,9 +655,10 @@ export function AgentDetailScreen({ agentName, onEditAgent, onOpenIntegrationSet
   // Front desk, Pre-visit, Waitlist, and Reminder each report exactly 4 metrics, so all 4
   // are shown by default. Agents with more metrics (Recall, Revenue, Treatment plan, etc.)
   // still default to the first two, with the rest available via Customize columns.
-  const metricKeys = COLUMN_DEFS.slice((isTaggingRouting || isReviewResponse) ? 2 : 3, -1).map((c) => String(c.key))
+  const metricsStartIndex = isReviewResponse && viewerRole.type === 'reseller' ? 3 : (isTaggingRouting || isReviewResponse) ? 2 : 3
+  const metricKeys = COLUMN_DEFS.slice(metricsStartIndex, -1).map((c) => String(c.key))
   const showAllMetrics = isFrontdesk || isPreVisit || isWaitlist || isReminder || isTaggingRouting || isReviewResponse
-  const DEFAULT_VISIBLE = ['name', 'status', ...((isTaggingRouting || isReviewResponse) ? [] : ['channels']), ...(showAllMetrics ? metricKeys : metricKeys.slice(0, 2)), 'locations']
+  const DEFAULT_VISIBLE = ['name', 'status', ...(isReviewResponse && viewerRole.type === 'reseller' ? ['businesses'] : []), ...((isTaggingRouting || isReviewResponse) ? [] : ['channels']), ...(showAllMetrics ? metricKeys : metricKeys.slice(0, 2)), 'locations']
   const [order, setOrder] = useState<string[]>(DEFAULT_ORDER)
   const [visible, setVisible] = useState<string[]>(DEFAULT_VISIBLE)
 
@@ -685,6 +751,10 @@ export function AgentDetailScreen({ agentName, onEditAgent, onOpenIntegrationSet
         onOpenIntegrationSettings={onOpenIntegrationSettings}
         onNavigateToInbox={onNavigateToInbox}
         product={product}
+        viewerRole={viewerRole}
+        businessAgentSetup={businessAgentSetup}
+        businessPaused={businessPaused}
+        businesses={launchedBusinesses}
       />
     )
   }
@@ -765,8 +835,8 @@ export function AgentDetailScreen({ agentName, onEditAgent, onOpenIntegrationSet
                   columns={columns}
                   data={visibleData}
                   scrollOnHover
-                  onRowClick={(row) => setSelectedInstance(row.name)}
-                  rowMenuItems={[
+                  onRowClick={(row) => (isReviewResponseAgentsList ? onEditAgent?.(row.name) : setSelectedInstance(row.name))}
+                  rowMenuItems={isReviewResponseAgentsList && viewerRole.type === 'business' ? businessReviewResponseRowMenuItems : [
                     { label: 'Edit', onClick: (row) => onEditAgent?.(row.name) },
                     {
                       label: 'Pause',
@@ -774,7 +844,7 @@ export function AgentDetailScreen({ agentName, onEditAgent, onOpenIntegrationSet
                       visible: (row) => row.status === 'Running',
                     },
                     { label: 'Duplicate', onClick: () => {} },
-                    { label: 'View details', onClick: (row) => setSelectedInstance(row.name) },
+                    { label: 'View outcomes', onClick: (row) => setSelectedInstance(row.name) },
                     { label: 'Reports', onClick: () => {} },
                     { label: 'Delete', onClick: () => {}, variant: 'danger' },
                   ]}

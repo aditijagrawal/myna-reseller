@@ -6,5 +6,6 @@ export interface TopNavProps {
   initials?: string
   onAdd?: () => void
   onHelp?: () => void
+  onSettings?: () => void
   onMenu?: () => void
 }

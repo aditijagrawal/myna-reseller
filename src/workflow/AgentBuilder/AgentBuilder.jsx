@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect, useLayoutEffect } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect, useLayoutEffect } from 'react';
 import LHSDrawer, { isFrontDeskAgent, INITIATE_VOICE_CALL_TASK } from '../LHSDrawer/LHSDrawer';
 import FlowCanvas from '../FlowCanvas/FlowCanvas';
 import RHS from '../Organisms/Panels/RHS/RHS';
@@ -10,10 +10,13 @@ import { saveAgent, getAgentBySlug, getCachedAgent, saveCustomTool, getCustomToo
 import CustomToolViewer from '../Organisms/Drawers/CustomToolViewer/CustomToolViewer';
 import PreviewPanel from '../Molecules/PreviewPanel/PreviewPanel';
 import { BookTestAppointmentModal } from '../../components/BookTestAppointmentModal/BookTestAppointmentModal';
+import { ConfirmModal } from '../../components/ConfirmModal/ConfirmModal';
 import ReminderToolDrawer from '../Organisms/Drawers/ReminderToolDrawer/ReminderToolDrawer';
 import VoiceCallToolDrawer from '../Organisms/Drawers/VoiceCallToolDrawer/VoiceCallToolDrawer';
 import ResponseHandlerToolDrawer from '../Organisms/Drawers/ResponseHandlerToolDrawer/ResponseHandlerToolDrawer';
 import AssignTagsToolDrawer from '../Organisms/Drawers/AssignTagsToolDrawer/AssignTagsToolDrawer';
+import CreateTicketToolDrawer from '../Organisms/Drawers/CreateTicketToolDrawer/CreateTicketToolDrawer';
+import ShareToSocialToolDrawer from '../Organisms/Drawers/ShareToSocialToolDrawer/ShareToSocialToolDrawer';
 import TransferToolDrawer from '../Organisms/Drawers/TransferToolDrawer/TransferToolDrawer';
 import QueryConfigDrawer from '../Organisms/Drawers/QueryConfigDrawer/QueryConfigDrawer';
 import AssignContactStatusDrawer from '../Organisms/Drawers/AssignContactStatusDrawer/AssignContactStatusDrawer';
@@ -627,7 +630,18 @@ export default function AgentBuilder({
   publishDisabled = false,
   publishLabel = 'Publish',
   defaultOpenSection = 'Tasks',
+  viewerRole = { type: 'reseller' },
+  toolConfigStatus = {},
+  onToolConfigured,
 }) {
+  const isBusinessViewer = viewerRole?.type === 'business';
+
+  const BUSINESS_SPECIFIC_TOOLS = {
+    'assign-tags': { label: 'Assign tags', open: () => setAssignTagsToolOpen(true) },
+    'publish-response': { label: 'Handle response — approval workflow', open: () => setResponseHandlerToolOpen(true) },
+    'create-ticket': { label: 'Create ticket in Birdeye', open: () => setCreateTicketToolOpen(true) },
+    'share-social': { label: 'Share review to social', open: () => setShareSocialToolOpen(true) },
+  };
   /* ─── Prop-based slug params (no React Router) ─── */
   const urlModuleSlug = propModuleSlug || moduleContext || 'search';
   const urlAgentSlug = propAgentSlug || '';
@@ -663,6 +677,8 @@ export default function AgentBuilder({
   const [voiceCallToolOpen, setVoiceCallToolOpen] = useState(false);
   const [responseHandlerToolOpen, setResponseHandlerToolOpen] = useState(false);
   const [assignTagsToolOpen, setAssignTagsToolOpen] = useState(false);
+  const [createTicketToolOpen, setCreateTicketToolOpen] = useState(false);
+  const [shareSocialToolOpen, setShareSocialToolOpen] = useState(false);
   const [transferToolOpen, setTransferToolOpen] = useState(false);
   const [queryConfigOpen, setQueryConfigOpen] = useState(false);
   const [assignContactStatusToolOpen, setAssignContactStatusToolOpen] = useState(false);
@@ -690,6 +706,25 @@ export default function AgentBuilder({
     return base;
   });
   const [agentStatus, setAgentStatus] = useState(initialStatus || 'Draft');
+
+  /* ─── Business-specific tools actually used by this workflow, and which of
+     them still need this business's input ─── */
+  const presentBusinessTools = useMemo(() => {
+    if (!isBusinessViewer) return [];
+    const presentIds = new Set();
+    Object.values(nodeDetails).forEach((detail) => {
+      if (detail && Array.isArray(detail.selectedTools)) {
+        detail.selectedTools.forEach((id) => {
+          if (BUSINESS_SPECIFIC_TOOLS[id]) presentIds.add(id);
+        });
+      }
+    });
+    return Array.from(presentIds);
+  }, [isBusinessViewer, nodeDetails]);
+  const incompleteBusinessTools = useMemo(
+    () => presentBusinessTools.filter((id) => !toolConfigStatus[id]),
+    [presentBusinessTools, toolConfigStatus],
+  );
 
   /* ─── Sync live procedure library into the procedureService registry ─── */
   useEffect(() => {
@@ -794,6 +829,9 @@ export default function AgentBuilder({
   /* ─── Share modal ─── */
   const [shareModalOpen, setShareModalOpen] = useState(false);
 
+  /* ─── Blueprint sync confirm modal (Review response agent only) ─── */
+  const [blueprintSyncModalOpen, setBlueprintSyncModalOpen] = useState(false);
+
   const handleShare = useCallback(async () => {
     setHeaderMenuOpen(false);
     clearTimeout(saveTimerRef.current);
@@ -819,6 +857,13 @@ export default function AgentBuilder({
   /* ─── Agent name is derived from nodeDetails (single source of truth) ─── */
   const agentName = nodeDetails[START_NODE_ID]?.agentName || (typeof pageTitle === 'string' ? pageTitle : '') || '';
   const isReminderAgent = /reminder/i.test(agentName);
+  // A business viewing a reseller-deployed (shared) agent can never touch its
+  // structure — only complete its own fields (handled per-drawer via `locked`
+  // above), pause/resume, duplicate, and view outcomes/reports. Freeze the
+  // canvas, LHS drag source, and every non-start RHS detail panel for them.
+  const isReviewResponseAgent = /^review response agent/i.test(agentName);
+  const structureFrozen = isBusinessViewer && isReviewResponseAgent;
+  const effectiveViewOnly = viewOnly || structureFrozen;
   const [agentDesc] = useState(initialDescription || '');
   // isTemplateMode uses state so it correctly activates after applyAgent loads templateId from Firestore
   const isTemplateMode = !!agentTemplateId && agentStatus !== 'Running';
@@ -923,6 +968,20 @@ export default function AgentBuilder({
       }, 1500);
     }
   }, [buildAgentPayload, onSaveAgent]);
+
+  /* ─── Save click — Review response agent gets a blueprint-sync confirm first ─── */
+  const handleSaveClick = useCallback(() => {
+    if (publishLabel === 'Save') {
+      setBlueprintSyncModalOpen(true);
+      return;
+    }
+    handlePublish();
+  }, [publishLabel, handlePublish]);
+
+  const handleConfirmBlueprintSync = useCallback(() => {
+    setBlueprintSyncModalOpen(false);
+    handlePublish();
+  }, [handlePublish]);
 
   const handleSaveAndPublish = useCallback(async () => {
     clearTimeout(saveTimerRef.current);
@@ -1218,11 +1277,11 @@ export default function AgentBuilder({
       onDelete: () => handleDeleteNode(n.id),
       onMoveUp: () => handleMoveNode(n.id, 'up'),
       onMoveDown: () => handleMoveNode(n.id, 'down'),
-      canMoveUp: !viewOnly && nodeIdx > 0,
-      canMoveDown: !viewOnly && nodeIdx !== -1 && nodeIdx < nodeList.length - 1,
+      canMoveUp: !effectiveViewOnly && nodeIdx > 0,
+      canMoveDown: !effectiveViewOnly && nodeIdx !== -1 && nodeIdx < nodeList.length - 1,
     };
-    if (n.type === 'branch') extra.onAddBranch = () => handleAddBranchPath(n.id);
-    if (n.type === 'task' && !viewOnly) {
+    if (n.type === 'branch' && !effectiveViewOnly) extra.onAddBranch = () => handleAddBranchPath(n.id);
+    if (n.type === 'task' && !effectiveViewOnly) {
       extra.onToggleChange = (enabled) => handleNodeToggleChange(n.id, enabled);
     }
     if (n.type === 'procedures') {
@@ -1232,7 +1291,7 @@ export default function AgentBuilder({
         setDrawerOpen(true);
         setActiveProcedureId(procedureId);
       };
-      if (!viewOnly) {
+      if (!effectiveViewOnly) {
         extra.onToggleChange = (enabled) => handleNodeToggleChange(n.id, enabled);
         extra.onDropProcedure = (procedureId) => {
           const resolvedId = isCustomProcedureId(procedureId) ? CUSTOM_PROCEDURE_ID : procedureId;
@@ -1564,7 +1623,7 @@ export default function AgentBuilder({
           key={`lhs-preview-${lhsPreviewProcedureId}`}
           variant="procedureDetail"
           title={mergedProc.name}
-          viewOnly={viewOnly}
+          viewOnly={effectiveViewOnly}
           product={product}
           onBack={() => { setLhsPreviewProcedureId(null); setDrawerOpen(false); }}
           bodyProps={{
@@ -1595,6 +1654,7 @@ export default function AgentBuilder({
           product={product}
           bodyProps={{
             values: startDetails,
+            viewerRole,
             onChange: (field, value) => {
               setNodeDetails((prev) => ({
                 ...prev,
@@ -1613,7 +1673,7 @@ export default function AgentBuilder({
         <RHS
           variant="branch"
           title="Branch"
-          viewOnly={viewOnly}
+          viewOnly={effectiveViewOnly}
           product={product}
           bodyProps={{ initialValues: currentDetails, onFieldChange: activeFieldChange }}
           onClose={handleCloseDrawer}
@@ -1658,7 +1718,7 @@ export default function AgentBuilder({
         <RHS
           variant="conversationTrigger"
           title="Trigger"
-          viewOnly={viewOnly}
+          viewOnly={effectiveViewOnly}
           product={product}
           bodyProps={{ initialValues: currentDetails, onFieldChange: activeFieldChange }}
           onClose={handleCloseDrawer}
@@ -1672,7 +1732,7 @@ export default function AgentBuilder({
         <RHS
           variant="entityTrigger"
           title="Trigger"
-          viewOnly={viewOnly}
+          viewOnly={effectiveViewOnly}
           product={product}
           bodyProps={{ initialValues: currentDetails, onFieldChange: activeFieldChange }}
           onClose={handleCloseDrawer}
@@ -1686,7 +1746,7 @@ export default function AgentBuilder({
         <RHS
           variant="controlBranch"
           title="Branch details"
-          viewOnly={viewOnly}
+          viewOnly={effectiveViewOnly}
           product={product}
           bodyProps={{
             initialValues: { ...currentDetails, branchNodeId: selectedNodeId },
@@ -1704,7 +1764,7 @@ export default function AgentBuilder({
         <RHS
           variant="subagent"
           title="Sub-agent"
-          viewOnly={viewOnly}
+          viewOnly={effectiveViewOnly}
           product={product}
           bodyProps={{ initialValues: currentDetails, onFieldChange: activeFieldChange }}
           onClose={handleCloseDrawer}
@@ -1718,7 +1778,7 @@ export default function AgentBuilder({
         <RHS
           variant="delay"
           title="Delay"
-          viewOnly={viewOnly}
+          viewOnly={effectiveViewOnly}
           product={product}
           bodyProps={{ initialValues: currentDetails, onFieldChange: activeFieldChange }}
           onClose={handleCloseDrawer}
@@ -1732,7 +1792,7 @@ export default function AgentBuilder({
         <RHS
           variant="parallel"
           title="Parallel tasks"
-          viewOnly={viewOnly}
+          viewOnly={effectiveViewOnly}
           product={product}
           bodyProps={{ initialValues: currentDetails, onFieldChange: activeFieldChange }}
           onClose={handleCloseDrawer}
@@ -1746,7 +1806,7 @@ export default function AgentBuilder({
         <RHS
           variant="loop"
           title="Loop"
-          viewOnly={viewOnly}
+          viewOnly={effectiveViewOnly}
           product={product}
           bodyProps={{ initialValues: currentDetails, onFieldChange: activeFieldChange }}
           onClose={handleCloseDrawer}
@@ -1767,7 +1827,7 @@ export default function AgentBuilder({
               key="proc-create-custom"
               variant="createCustomProcedure"
               title="Create custom procedure"
-              viewOnly={viewOnly}
+              viewOnly={effectiveViewOnly}
               product={product}
               onBack={() => setActiveProcedureId(null)}
               bodyProps={{
@@ -1798,7 +1858,7 @@ export default function AgentBuilder({
             key={`proc-detail-${activeProcedureId}`}
             variant="procedureDetail"
             title={mergedProc.name}
-            viewOnly={viewOnly}
+            viewOnly={effectiveViewOnly}
             product={product}
             onBack={() => setActiveProcedureId(null)}
             bodyProps={{
@@ -1822,7 +1882,7 @@ export default function AgentBuilder({
           key="proc-list"
           variant="procedureTask"
           title="Procedures"
-          viewOnly={viewOnly}
+          viewOnly={effectiveViewOnly}
           product={product}
           bodyProps={{
             initialValues: currentDetails,
@@ -1840,7 +1900,7 @@ export default function AgentBuilder({
         <RHS
           variant="llmTask"
           title="LLM Task"
-          viewOnly={viewOnly}
+          viewOnly={effectiveViewOnly}
           product={product}
           bodyProps={{ initialValues: currentDetails, onFieldChange: activeFieldChange, onOpenToolDrawer: () => setToolPickerOpen(true), onOpenTool: openToolByName }}
           onClose={handleCloseDrawer}
@@ -1854,7 +1914,7 @@ export default function AgentBuilder({
         <RHS
           variant="voiceCallTask"
           title="Task"
-          viewOnly={viewOnly}
+          viewOnly={effectiveViewOnly}
           product={product}
           bodyProps={{
             initialValues: currentDetails,
@@ -1879,7 +1939,7 @@ export default function AgentBuilder({
         <RHS
           variant="sendResponseTask"
           title="Task"
-          viewOnly={viewOnly}
+          viewOnly={effectiveViewOnly}
           product={product}
           bodyProps={{
             initialValues: currentDetails,
@@ -1895,13 +1955,17 @@ export default function AgentBuilder({
       <RHS
         variant="entityTask"
         title="Task"
-        viewOnly={viewOnly}
+        viewOnly={effectiveViewOnly}
         bodyProps={{
           initialValues: currentDetails,
           onFieldChange: activeFieldChange,
+          viewOnly: effectiveViewOnly,
+          businessEditableToolIds: structureFrozen ? Object.keys(BUSINESS_SPECIFIC_TOOLS) : [],
           onOpenTool: (toolId) => {
             if (toolId === 'publish-response') { setResponseHandlerToolOpen(true); return; }
             if (toolId === 'assign-tags') { setAssignTagsToolOpen(true); return; }
+            if (toolId === 'create-ticket') { setCreateTicketToolOpen(true); return; }
+            if (toolId === 'share-social') { setShareSocialToolOpen(true); return; }
             if (toolId === 'reminder-tool') { setReminderToolOpen(true); return; }
             if (toolId === 'get-unscheduled-treatment-plans') { setQueryConfigOpen(true); return; }
             if (toolId === 'assign-contact-status') { setAssignContactStatusToolOpen(true); return; }
@@ -1920,7 +1984,16 @@ export default function AgentBuilder({
   };
 
   /* ─── Header actions: Publish + three-dots menu (or view-only badge) ─── */
-  const headerActions = viewOnly ? (
+  // A business sees "View only" only when this agent has nothing for it to
+  // configure at all. If there's business-specific setup here — whether still
+  // incomplete or already done — it always gets a Publish button, so
+  // configuring is never a one-time-only action.
+  const showBusinessPublish = structureFrozen && presentBusinessTools.length > 0;
+  const headerActions = showBusinessPublish ? (
+    <div className="ab-header-actions">
+      <Button theme="primary" label="Publish" onClick={onClose} />
+    </div>
+  ) : effectiveViewOnly ? (
     <div className="ab-view-badge">
       <span className="material-symbols-outlined">visibility</span>
       View only
@@ -1940,7 +2013,7 @@ export default function AgentBuilder({
 <Button
         theme="primary"
         label={isTemplateMode ? 'Save template' : publishLabel}
-        onClick={isTemplateMode ? handleSaveTemplate : handlePublish}
+        onClick={isTemplateMode ? handleSaveTemplate : handleSaveClick}
         disabled={!isTemplateMode && publishDisabled}
       />
     </div>
@@ -1948,7 +2021,10 @@ export default function AgentBuilder({
 
   const STATUS_BADGE_CLASS = {
     Running: 'ab-header-status--running',
+    Live: 'ab-header-status--running',
+    Active: 'ab-header-status--running',
     Paused: 'ab-header-status--paused',
+    'Needs setup': 'ab-header-status--paused',
     Draft: 'ab-header-status--draft',
   };
   const statusBadgeClass = STATUS_BADGE_CLASS[agentStatus] || 'ab-header-status--draft';
@@ -2020,12 +2096,32 @@ export default function AgentBuilder({
           </div>
         )}
 
+        {isBusinessViewer && incompleteBusinessTools.length > 0 && (
+          <div className="ab-view-banner">
+            <span className="material-symbols-outlined">warning</span>
+            <span>
+              {incompleteBusinessTools.length} setting{incompleteBusinessTools.length > 1 ? 's' : ''} need
+              {incompleteBusinessTools.length > 1 ? '' : 's'} your input before this agent goes live:
+            </span>
+            {incompleteBusinessTools.map((id, i) => (
+              <a
+                key={id}
+                className="ab-view-banner__link"
+                href="#"
+                onClick={(e) => { e.preventDefault(); BUSINESS_SPECIFIC_TOOLS[id].open(); }}
+              >
+                {BUSINESS_SPECIFIC_TOOLS[id].label}{i < incompleteBusinessTools.length - 1 ? ',' : ''}
+              </a>
+            ))}
+          </div>
+        )}
+
         <div className="agent-builder">
           <div className={`agent-builder__lhs${lhsCollapsed ? ' agent-builder__lhs--collapsed' : ''}`}>
             <LHSDrawer
               defaultTab="Create manually"
               defaultOpenSection={defaultOpenSection}
-              viewOnly={viewOnly}
+              viewOnly={effectiveViewOnly}
               product={product}
               agentName={agentName}
               procedures={procedures}
@@ -2036,6 +2132,7 @@ export default function AgentBuilder({
                 setActiveProcedureId(null);
                 setDrawerOpen(true);
               }}
+              hasTrigger={nodeList.some((n) => n.flowType === 'trigger')}
             />
           </div>
 
@@ -2054,11 +2151,11 @@ export default function AgentBuilder({
               nodes={nodes}
               edges={edges}
               onNodeClick={handleNodeClick}
-              onDropNode={viewOnly ? undefined : handleDropNode}
-              onNodesReorder={viewOnly ? undefined : handleNodesReorder}
+              onDropNode={effectiveViewOnly ? undefined : handleDropNode}
+              onNodesReorder={effectiveViewOnly ? undefined : handleNodesReorder}
               selectedNodeId={selectedNodeId}
               orientation="vertical"
-              viewOnly={viewOnly}
+              viewOnly={effectiveViewOnly}
               product={product}
               agentName={agentName}
               onEdit={viewOnly ? onEdit : undefined}
@@ -2122,13 +2219,51 @@ export default function AgentBuilder({
         />
       )}
 
+      {/* ─── Blueprint sync confirm modal ─── */}
+      <ConfirmModal
+        open={blueprintSyncModalOpen}
+        title="Sync changes to blueprint?"
+        description="Any changes made to this agent will be synced to the blueprint and thus deployed on all the businesses selected for the blueprint."
+        confirmLabel="Save"
+        onClose={() => setBlueprintSyncModalOpen(false)}
+        onConfirm={handleConfirmBlueprintSync}
+      />
+
       {/* ─── Reminder tool drawer ─── */}
       <ReminderToolDrawer isOpen={reminderToolOpen} onClose={() => setReminderToolOpen(false)} />
 
       {/* ─── Voice call tool drawer ─── */}
       <VoiceCallToolDrawer isOpen={voiceCallToolOpen} onClose={() => setVoiceCallToolOpen(false)} initialValues={currentDetails} product={product} />
-      <ResponseHandlerToolDrawer isOpen={responseHandlerToolOpen} onClose={() => setResponseHandlerToolOpen(false)} initialValues={currentDetails} onFieldChange={activeFieldChange} />
-      <AssignTagsToolDrawer isOpen={assignTagsToolOpen} onClose={() => setAssignTagsToolOpen(false)} />
+      <ResponseHandlerToolDrawer
+        isOpen={responseHandlerToolOpen}
+        onClose={() => setResponseHandlerToolOpen(false)}
+        initialValues={currentDetails}
+        onFieldChange={activeFieldChange}
+        locked={!isBusinessViewer}
+        configured={!!toolConfigStatus['publish-response']}
+        onConfigured={() => onToolConfigured?.('publish-response')}
+      />
+      <AssignTagsToolDrawer
+        isOpen={assignTagsToolOpen}
+        onClose={() => setAssignTagsToolOpen(false)}
+        locked={!isBusinessViewer}
+        configured={!!toolConfigStatus['assign-tags']}
+        onConfigured={() => onToolConfigured?.('assign-tags')}
+      />
+      <CreateTicketToolDrawer
+        isOpen={createTicketToolOpen}
+        onClose={() => setCreateTicketToolOpen(false)}
+        locked={!isBusinessViewer}
+        configured={!!toolConfigStatus['create-ticket']}
+        onConfigured={() => onToolConfigured?.('create-ticket')}
+      />
+      <ShareToSocialToolDrawer
+        isOpen={shareSocialToolOpen}
+        onClose={() => setShareSocialToolOpen(false)}
+        locked={!isBusinessViewer}
+        configured={!!toolConfigStatus['share-social']}
+        onConfigured={() => onToolConfigured?.('share-social')}
+      />
 
       {/* ─── Transfer tool drawer ─── */}
       <TransferToolDrawer isOpen={transferToolOpen} onClose={() => setTransferToolOpen(false)} />

@@ -39,8 +39,12 @@ export interface RowMenuItem<T> {
   onClick: (row: T) => void
   /** When omitted, the item is always shown. */
   visible?: (row: T) => boolean
+  /** Greys out the item and blocks the click; pairs with `description` for a hover tooltip explaining why. */
+  disabled?: (row: T) => boolean
   variant?: 'default' | 'danger'
   icon?: string
+  /** Shown as a hover tooltip on the menu item (styled like the row-action tooltip). Can vary per row. */
+  description?: string | ((row: T) => string)
 }
 
 export interface DataTableProps<T = Record<string, unknown>> {

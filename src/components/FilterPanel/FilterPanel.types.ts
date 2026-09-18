@@ -7,6 +7,8 @@ export interface FilterField {
   options?: SelectOption[]
   /** Multi-select (default true) vs single-select. */
   multi?: boolean
+  /** 'select' (default) = SelectMenu options list. 'date-range' = calendar + preset range picker. */
+  type?: 'select' | 'date-range'
 }
 
 export interface FilterPanelProps {

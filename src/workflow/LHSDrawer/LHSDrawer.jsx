@@ -334,6 +334,88 @@ export const REVIEWS_TASK_SUB_ITEMS = {
   },
 };
 
+// ─── Reviews AI — icon-rail layout (Trigger / Task / Controls only, no Procedures) ───
+// Same underlying node types and drag/drop mechanics as the generic cards above —
+// just grouped and labelled to match the Reviews AI product design exactly.
+export const REVIEWS_TRIGGER_GROUPS = [
+  {
+    key: 'review',
+    label: 'Review',
+    icon: 'grade',
+    nodeType: 'trigger',
+    defaultOpen: true,
+    items: [
+      { label: 'New review received', description: 'Trigger fired when a new review is received' },
+      { label: 'Review updated', description: 'Trigger fired when a review is updated' },
+      { label: 'New review is received or updated', description: 'Trigger fired when a new review is received or updated' },
+    ],
+  },
+  {
+    key: 'schedule',
+    label: 'Schedule based',
+    icon: 'schedule',
+    nodeType: 'trigger',
+    defaultOpen: false,
+    items: [
+      { label: 'Schedule-based', description: 'Runs the agent on a recurring schedule you define' },
+    ],
+  },
+];
+
+export const REVIEWS_CONTROL_GROUPS = [
+  {
+    key: 'delay',
+    label: 'Delay',
+    icon: 'schedule',
+    nodeType: 'delay',
+    defaultOpen: false,
+    items: [
+      { label: 'Delay', description: 'Add a wait step before the next task runs' },
+    ],
+  },
+  {
+    key: 'branch',
+    label: 'Branch',
+    icon: 'account_tree',
+    nodeType: 'branch',
+    defaultOpen: true,
+    items: [
+      { label: 'Based on condition', description: 'Route the flow down different paths based on conditions you define.' },
+      { label: 'Based on percentage', description: 'Split traffic across paths by percentage — useful for testing variations.' },
+      { label: 'Always run', description: 'Add a path that always runs, regardless of any conditions.' },
+    ],
+  },
+  {
+    key: 'loop',
+    label: 'Loop',
+    icon: 'repeat',
+    nodeType: 'loop',
+    defaultOpen: false,
+    items: [
+      { label: 'Loop', description: 'Repeat a set of steps until a condition is met' },
+    ],
+  },
+];
+
+export const REVIEWS_STANDALONE_TASK_CARDS = [
+  { label: 'Custom', icon: 'dashboard_customize', description: 'Reply to the review using the generated response' },
+];
+
+// Category groups derived from the existing REVIEWS_TASK_CARDS / REVIEWS_TASK_SUB_ITEMS —
+// same data, just rendered inline instead of as a hover flyout.
+export const REVIEWS_TASK_GROUPS = REVIEWS_TASK_CARDS
+  .filter((c) => c.action === 'chevron')
+  .map((c) => ({
+    key: c.subKey,
+    label: c.label,
+    icon: c.icon,
+    nodeType: 'task',
+    count: c.count,
+    defaultOpen: c.label === 'Review',
+    isExternalApps: c.subKey === EXTERNAL_APPS_TASK_KEY,
+    items: REVIEWS_TASK_SUB_ITEMS[c.subKey]?.items ?? [],
+  }));
+
 // Default export for backward compat (automotive)
 export const TASK_CARDS = AUTOMOTIVE_TASK_CARDS;
 
@@ -635,6 +717,7 @@ export default function LHSDrawer({
   procedures = null,
   onProcedureClick = null,
   onCollapse = null,
+  hasTrigger = true,
 }) {
   const isHC = product === 'healthcare' || product === 'dental';
   const isReviews = String(agentName).replace(/ - .+$/, '').startsWith('Review response agent');
@@ -662,6 +745,8 @@ export default function LHSDrawer({
   const toggleSection = (section) =>
     setOpenSection((prev) => (prev === section ? null : section));
   const [search, setSearch] = useState('');
+  const [reviewsSection, setReviewsSection] = useState('trigger');
+  const [reviewsOpenGroups, setReviewsOpenGroups] = useState({});
   const [proceduresExpanded, setProceduresExpanded] = useState(false);
   const [eventBasedOpen, setEventBasedOpen] = useState(true);
   const [expandedCard, setExpandedCard] = useState(null);
@@ -720,7 +805,7 @@ export default function LHSDrawer({
     openCardDropdown(card, section, subKey);
   };
 
-  const renderCardRow = (card, section, nodeType) => {
+  const renderCardRow = (card, section, nodeType, sectionDisabled = false) => {
     const subKey = card.subKey || card.label;
     return (
       <div key={card.label} className="lhs-drawer__card-wrapper">
@@ -737,14 +822,14 @@ export default function LHSDrawer({
           viewOnly={viewOnly}
           procedureId={card.procedureId}
           dragLabel={card.dragLabel}
-          disabled={card.disabled}
+          disabled={sectionDisabled || card.disabled}
           count={card.count}
         />
       </div>
     );
   };
 
-  const renderCards = (cards, section, nodeType) => {
+  const renderCards = (cards, section, nodeType, sectionDisabled = false) => {
     const filtered = cards.filter(
       (c) => !search || c.label.toLowerCase().includes(search.toLowerCase()),
     );
@@ -764,7 +849,13 @@ export default function LHSDrawer({
 
     return (
       <div className={cardsClass}>
-        {visibleCards.map((card) => renderCardRow(card, section, nodeType))}
+        {sectionDisabled && (
+          <div className="lhs-drawer__section-hint">
+            <span className="material-symbols-outlined lhs-drawer__section-hint-icon">info</span>
+            <span>Add and save a trigger first — this section unlocks once the agent has one.</span>
+          </div>
+        )}
+        {visibleCards.map((card) => renderCardRow(card, section, nodeType, sectionDisabled))}
         {shouldCollapse && (
           <button
             type="button"
@@ -803,9 +894,9 @@ export default function LHSDrawer({
   };
 
   const triggerContent = renderTriggerContent();
-  const tasksContent = renderCards(activeTaskCards, 'task', 'task');
-  const proceduresContent = renderCards(activeProcedureCards, 'procedures', 'procedures');
-  const controlsContent = renderCards(CONTROL_CARDS, 'control', 'branch');
+  const tasksContent = renderCards(activeTaskCards, 'task', 'task', !hasTrigger);
+  const proceduresContent = renderCards(activeProcedureCards, 'procedures', 'procedures', !hasTrigger);
+  const controlsContent = renderCards(CONTROL_CARDS, 'control', 'branch', !hasTrigger);
 
   const allSubItems = { ...subItems, ...procedureSubItems };
   const showExternalAppsDropdown = expandedCard === EXTERNAL_APPS_TASK_KEY;
@@ -850,6 +941,139 @@ export default function LHSDrawer({
     hoverDropdownRef.current = false;
     scheduleCloseDropdown();
   };
+
+  if (isReviews) {
+    const REVIEWS_SECTIONS = [
+      { id: 'trigger', label: 'Trigger', icon: 'bolt', color: 'amber', groups: REVIEWS_TRIGGER_GROUPS, standaloneCards: [], searchPlaceholder: 'Search trigger...' },
+      { id: 'task', label: 'Task', icon: 'description', color: 'green', groups: REVIEWS_TASK_GROUPS, standaloneCards: REVIEWS_STANDALONE_TASK_CARDS, searchPlaceholder: 'Search task...' },
+      { id: 'control', label: 'Controls', icon: 'account_tree', color: 'blue', groups: REVIEWS_CONTROL_GROUPS, standaloneCards: [], searchPlaceholder: 'Search controls...' },
+    ];
+    const activeSectionDef = REVIEWS_SECTIONS.find((s) => s.id === reviewsSection) || REVIEWS_SECTIONS[0];
+    const isSectionLocked = (id) => id !== 'trigger' && !hasTrigger;
+    const searchLower = search.trim().toLowerCase();
+    const matchesSearch = (label) => !searchLower || label.toLowerCase().includes(searchLower);
+    const visibleGroups = activeSectionDef.groups.filter(
+      (g) => matchesSearch(g.label) || g.items.some((it) => matchesSearch(typeof it === 'string' ? it : it.label)),
+    );
+    const visibleStandalone = activeSectionDef.standaloneCards.filter((c) => matchesSearch(c.label));
+
+    const renderLeafRow = (item, nodeType, parentLabel) => {
+      const label = typeof item === 'string' ? item : item.label;
+      const description = typeof item === 'string' ? null : item.description;
+      return (
+        <div
+          key={label}
+          className="lhs-entity-group__item"
+          draggable={!viewOnly}
+          onDragStart={(e) => {
+            e.dataTransfer.setData('application/reactflow-type', nodeType);
+            e.dataTransfer.setData('application/reactflow-label', parentLabel);
+            e.dataTransfer.setData('application/reactflow-description', label);
+            e.dataTransfer.effectAllowed = 'copy';
+          }}
+        >
+          <span className="lhs-entity-group__item-body">
+            <span className="lhs-entity-group__item-label">{label}</span>
+            {description && <span className="lhs-entity-group__item-description">{description}</span>}
+          </span>
+          {!viewOnly && (
+            <span className="lhs-entity-group__item-drag lhs-entity-group__item-drag--visible material-symbols-outlined">
+              drag_indicator
+            </span>
+          )}
+        </div>
+      );
+    };
+
+    return (
+      <div className="lhs-reviews">
+        <div className="lhs-reviews__rail">
+          {REVIEWS_SECTIONS.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              title={s.label}
+              aria-label={s.label}
+              aria-disabled={isSectionLocked(s.id) || undefined}
+              disabled={isSectionLocked(s.id)}
+              className={`lhs-reviews__rail-btn lhs-reviews__rail-btn--${s.color}${reviewsSection === s.id ? ' lhs-reviews__rail-btn--active' : ''}`}
+              onClick={() => setReviewsSection(s.id)}
+            >
+              <span className="material-symbols-outlined">{s.icon}</span>
+            </button>
+          ))}
+        </div>
+
+        <div className="lhs-reviews__panel">
+          <div className="lhs-reviews__panel-header">
+            <span className={`material-symbols-outlined lhs-reviews__panel-header-icon lhs-reviews__panel-header-icon--${activeSectionDef.color}`}>
+              {activeSectionDef.icon}
+            </span>
+            <span className="lhs-reviews__panel-header-title">{activeSectionDef.label}</span>
+            {onCollapse && (
+              <button type="button" className="lhs-reviews__panel-close" onClick={onCollapse} aria-label="Collapse editor">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            )}
+          </div>
+
+          <div className="lhs-reviews__search">
+            <span className="material-symbols-outlined lhs-reviews__search-icon">search</span>
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={activeSectionDef.searchPlaceholder}
+            />
+          </div>
+
+          <div className="lhs-reviews__content">
+            {isSectionLocked(activeSectionDef.id) && (
+              <div className="lhs-drawer__section-hint">
+                <span className="material-symbols-outlined lhs-drawer__section-hint-icon">info</span>
+                <span>Add and save a trigger first — this section unlocks once the agent has one.</span>
+              </div>
+            )}
+
+            {!isSectionLocked(activeSectionDef.id) && visibleStandalone.length > 0 && (
+              <div className="lhs-entity-group__items">
+                {visibleStandalone.map((card) => renderLeafRow(card, activeSectionDef.id, card.label))}
+              </div>
+            )}
+
+            {!isSectionLocked(activeSectionDef.id) && visibleGroups.map((g) => {
+              const groupKey = `${activeSectionDef.id}:${g.key}`;
+              const isOpen = reviewsOpenGroups[groupKey] ?? g.defaultOpen;
+              return (
+                <div key={g.key} className={`lhs-reviews__group${isOpen ? ' lhs-reviews__group--open' : ''}`}>
+                  <button
+                    type="button"
+                    className="lhs-reviews__group-header"
+                    onClick={() => setReviewsOpenGroups((prev) => ({ ...prev, [groupKey]: !isOpen }))}
+                  >
+                    <span className="material-symbols-outlined lhs-reviews__group-icon">{g.icon}</span>
+                    <span className="lhs-reviews__group-label">{g.label}</span>
+                    {g.count != null && <span className="lhs-drawer__card-count">{g.count}</span>}
+                    <span className="material-symbols-outlined lhs-reviews__group-chevron">
+                      {isOpen ? 'expand_less' : 'expand_more'}
+                    </span>
+                  </button>
+                  {isOpen && (
+                    <div className="lhs-entity-group__items lhs-reviews__group-items">
+                      {g.isExternalApps ? (
+                        <LHSExternalAppsGroup nodeType="task" parentLabel={g.label} viewOnly={viewOnly} />
+                      ) : (
+                        g.items.map((item) => renderLeafRow(item, g.nodeType, g.label))
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="lhs-drawer" ref={panelRef} onMouseLeave={scheduleCloseDropdown}>

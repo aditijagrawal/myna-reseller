@@ -3,10 +3,12 @@ import {
   AUTOMOTIVE_AGENT_WORKFLOWS,
   HEALTHCARE_AGENT_WORKFLOWS,
   DENTAL_AGENT_WORKFLOWS,
+  REVIEW_RESPONSE_LAUNCHED_BUSINESSES,
 } from '../data/agentWorkflows'
 import { buildWizardAgentWorkflow } from '../data/buildWizardAgentWorkflow'
 import { useProcedureStore } from '../data/ProcedureStoreContext'
 import type { WizardAgentDraft } from '../data/wizardAgentConfig.types'
+import type { ViewerRole, ToolConfigStatus } from '../data/resellerTypes'
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
@@ -59,16 +61,7 @@ const REVIEW_RESPONSE_START = {
     '2. Boost response rates with faster, personalized replies that build trust and satisfaction\n' +
     '3. Spam and policy-violating reviews are filtered out and flagged for manual reporting\n' +
     '4. Replies match the review language, stay on brand, and are kept under 60 words',
-  businesses: [
-    { id: 'B-101', name: 'Bright Smile Dental Studio' },
-    { id: 'B-102', name: 'Lakeside Auto Group' },
-    { id: 'B-103', name: 'Sunrise Family Medicine' },
-    { id: 'B-104', name: 'Metro Property Partners' },
-    { id: 'B-105', name: 'Golden Gate Fitness' },
-    { id: 'B-106', name: 'Harborview Restaurants' },
-    { id: 'B-107', name: 'Cedar Lane Veterinary' },
-    { id: 'B-108', name: 'Summit Legal Services' },
-  ],
+  businesses: REVIEW_RESPONSE_LAUNCHED_BUSINESSES,
 }
 
 interface WorkflowEditorScreenProps {
@@ -77,6 +70,9 @@ interface WorkflowEditorScreenProps {
   product?: string
   agentStatus?: string
   wizardDraft?: WizardAgentDraft | null
+  viewerRole?: ViewerRole
+  toolConfigStatus?: ToolConfigStatus
+  onToolConfigured?: (toolKey: string) => void
 }
 
 export function WorkflowEditorScreen({
@@ -85,6 +81,9 @@ export function WorkflowEditorScreen({
   product = 'automotive',
   agentStatus = 'Running',
   wizardDraft = null,
+  viewerRole = { type: 'reseller' },
+  toolConfigStatus = {},
+  onToolConfigured,
 }: WorkflowEditorScreenProps) {
   const { procedures, addProcedure } = useProcedureStore()
   const agentBaseName = agentName.replace(/ - .+$/, '')
@@ -218,6 +217,9 @@ export function WorkflowEditorScreen({
           publishDisabled={publishDisabled}
           publishLabel={agentBaseName.startsWith('Review response agent') ? 'Save' : 'Publish'}
           defaultOpenSection="Tasks"
+          viewerRole={viewerRole}
+          toolConfigStatus={toolConfigStatus}
+          onToolConfigured={onToolConfigured}
         />
       </Suspense>
     </div>

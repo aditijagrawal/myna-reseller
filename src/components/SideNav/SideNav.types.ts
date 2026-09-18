@@ -20,6 +20,8 @@ export interface NavSection {
   standalone?: boolean
   /** For standalone sections: renders an open_in_new icon after the label. */
   external?: boolean
+  /** For standalone sections: renders this Material Symbol instead of the external icon. */
+  icon?: string
 }
 
 export interface SideNavProps {

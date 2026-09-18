@@ -50,6 +50,34 @@ const _SEED_TOOLS = [
     ],
     outputs: [{ name: 'status', type: 'string', description: 'Publish status' }],
   },
+  {
+    id: 'create-ticket',
+    name: 'Create ticket in Birdeye',
+    icon: 'confirmation_number',
+    description: 'Opens a ticket for the review and assigns it to the right team or person. Assignment and escalation rules are managed per business.',
+    category: 'Reviews',
+    modules: ['Reviews'],
+    products: ['automotive', 'healthcare', 'dental'],
+    inputs: [
+      { name: 'assignTo', type: 'array', description: 'Users or roles to assign the ticket to' },
+      { name: 'escalationRules', type: 'array', description: 'Time-based escalation actions' },
+    ],
+    outputs: [{ name: 'ticketId', type: 'string', description: 'Created ticket ID' }],
+  },
+  {
+    id: 'share-social',
+    name: 'Share review to social',
+    icon: 'share',
+    description: "Formats the review as a social post and shares it to the business's connected social channels. Brand assets and layout are managed per business.",
+    category: 'Reviews',
+    modules: ['Reviews'],
+    products: ['automotive', 'healthcare', 'dental'],
+    inputs: [
+      { name: 'backgroundImage', type: 'string', description: 'Brand background image for the post' },
+      { name: 'layout', type: 'string', description: 'Review layout template' },
+    ],
+    outputs: [{ name: 'status', type: 'string', description: 'Share status' }],
+  },
   // ── Automotive dealership tools ─────────────────────────────────────────
   {
     id: 'dms-integration',
