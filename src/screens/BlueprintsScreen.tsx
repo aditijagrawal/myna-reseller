@@ -11,6 +11,7 @@ import {
   TopNav,
   type FilterField,
   type RowMenuItem,
+  type SelectOption,
 } from '../components'
 import { BackArrowIcon } from '../assets/BackArrowIcon'
 
@@ -174,6 +175,17 @@ const FILTER_FIELDS: FilterField[] = [
 function today(): string {
   return new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
 }
+
+const BUSINESS_SELECT_OPTIONS: SelectOption[] = BUSINESS_NAMES.map((name) => {
+  const { title, code } = parseBusinessLabel(name)
+  return { value: name, label: title, subLabel: code }
+})
+
+const AGENT_SELECT_OPTIONS: SelectOption[] = [
+  ...LISTING_OPTIMIZATION_AGENTS.map((name) => ({ value: name, label: name, group: 'Listing optimization agents' })),
+  ...REVIEW_GENERATION_AGENTS.map((name) => ({ value: name, label: name, group: 'Review generation agents' })),
+  ...REVIEW_RESPONSE_AGENTS.map((name) => ({ value: name, label: name, group: 'Review response agents' })),
+]
 
 function parseBusinessLabel(name: string): { title: string; code: string } {
   const match = name.match(/^(\S+)\s+(.*)$/)
@@ -454,7 +466,7 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
 
   return (
     <div className="flex h-full flex-col">
-      <TopNav initials="S" />
+      <TopNav title="Settings" initials="S" />
 
       <div className="flex flex-1 overflow-hidden">
         <div className="flex flex-1 flex-col overflow-auto">
@@ -757,8 +769,8 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
         title={editingRow ? editingRow.name : 'New blueprint'}
         fields={[
           { key: 'name', label: 'Name', type: 'text', placeholder: 'Example: Positive review agent blueprint' },
-          { key: 'sourceAccount', label: 'Source account', type: 'select', options: BUSINESS_NAMES },
-          { key: 'agents', label: 'Agents', type: 'select', options: ALL_AGENT_NAMES },
+          { key: 'sourceAccount', label: 'Source account', type: 'select', options: BUSINESS_SELECT_OPTIONS },
+          { key: 'agents', label: 'Agents', type: 'select', options: AGENT_SELECT_OPTIONS },
           { key: 'templates', label: 'Templates', type: 'select', options: TEMPLATE_NAMES },
         ]}
         submitLabel="Save"

@@ -252,7 +252,7 @@ export function SettingsScreen({ initialTab, onTabConsumed, onWebWidgets, onAppo
 
       {/* Right side — TopNav + content */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        <TopNav initials="S" />
+        <TopNav title="Settings" initials="S" />
         <div className="flex flex-1 flex-col overflow-hidden">
           {/* Sticky search bar */}
           <div className="shrink-0 px-2xl pt-2xl pb-md" style={{ backgroundColor: '#F5F5F5' }}>

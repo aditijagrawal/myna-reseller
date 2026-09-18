@@ -1,3 +1,5 @@
+import type { SelectOption } from '../SelectMenu/SelectMenu.types'
+
 export type FormFieldType = 'text' | 'select' | 'template-picker' | 'textarea'
 
 export interface TemplateOption {
@@ -11,8 +13,8 @@ export interface FormField {
   label: string
   type: FormFieldType
   placeholder?: string
-  /** Options for select fields. */
-  options?: string[]
+  /** Options for select fields — plain strings, or SelectOptions for grouped/2-line variants. */
+  options?: string[] | SelectOption[]
   /** Options for template-picker fields. */
   templateOptions?: TemplateOption[]
   /** Max character count for textarea fields. */

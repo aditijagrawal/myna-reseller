@@ -1,6 +1,10 @@
 export interface SelectOption {
   value: string
   label: string
+  /** Optional second line rendered under the label (e.g. a business id) — "2 lines" dropdown variant. */
+  subLabel?: string
+  /** Optional section header this option is grouped under — "with Sections" dropdown variant. */
+  group?: string
 }
 
 export interface SelectMenuProps {

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Icon } from '../Icon/Icon'
-import { SelectMenuProps } from './SelectMenu.types'
+import { SelectMenuProps, SelectOption } from './SelectMenu.types'
 
 function CheckBox({ checked }: { checked: boolean }) {
   return (
@@ -26,11 +26,24 @@ export function SelectMenu({
   const [query, setQuery] = useState('')
   const selected = new Set(value)
 
-  const filtered = useMemo(
-    () => options.filter((o) => o.label.toLowerCase().includes(query.trim().toLowerCase())),
-    [options, query],
-  )
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return options.filter((o) => o.label.toLowerCase().includes(q) || o.subLabel?.toLowerCase().includes(q))
+  }, [options, query])
   const allSelected = options.length > 0 && options.every((o) => selected.has(o.value))
+  const groups = useMemo(() => {
+    const order: (string | undefined)[] = []
+    const map = new Map<string | undefined, SelectOption[]>()
+    filtered.forEach((o) => {
+      if (!map.has(o.group)) {
+        order.push(o.group)
+        map.set(o.group, [])
+      }
+      map.get(o.group)!.push(o)
+    })
+    return order.map((group) => ({ group, items: map.get(group)! }))
+  }, [filtered])
+  const hasGroups = groups.some((g) => g.group)
 
   function toggle(val: string) {
     if (multi) {
@@ -80,37 +93,52 @@ export function SelectMenu({
             </button>
           )}
 
-          {filtered.map((opt) => {
-            const isSel = selected.has(opt.value)
-            // Single select — label left, gray tick on the right, gray selected row.
-            if (!multi) {
-              return (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => toggle(opt.value)}
-                  className={`flex w-full items-center gap-sm rounded-sm py-sm pl-md pr-sm text-left ${
-                    isSel ? 'bg-surface-selected' : 'hover:bg-surface-hover'
-                  }`}
-                >
-                  <span className="min-w-0 flex-1 truncate text-body text-text-primary">{opt.label}</span>
-                  {isSel && <Icon name="check" size={20} className="shrink-0 text-text-icon" />}
-                </button>
-              )
-            }
-            // Multi select — checkbox on the left.
-            return (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => toggle(opt.value)}
-                className="flex w-full items-center gap-sm rounded-sm py-sm pr-sm text-left hover:bg-surface-hover"
-              >
-                <CheckBox checked={isSel} />
-                <span className="min-w-0 flex-1 truncate text-body text-text-primary">{opt.label}</span>
-              </button>
-            )
-          })}
+          {groups.map(({ group, items }) => (
+            <div key={group ?? '__ungrouped__'} className="flex flex-col gap-xs">
+              {hasGroups && group && (
+                <div className="px-md pt-sm">
+                  <span className="text-small text-text-tertiary">{group}</span>
+                </div>
+              )}
+              {items.map((opt) => {
+                const isSel = selected.has(opt.value)
+                const label = (
+                  <span className="flex min-w-0 flex-1 flex-col gap-xs truncate text-left">
+                    <span className="truncate text-body text-text-primary">{opt.label}</span>
+                    {opt.subLabel && <span className="truncate text-small text-text-tertiary">{opt.subLabel}</span>}
+                  </span>
+                )
+                // Single select — label left, gray tick on the right, gray selected row.
+                if (!multi) {
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => toggle(opt.value)}
+                      className={`flex w-full items-center gap-sm rounded-sm py-sm pl-md pr-sm text-left ${
+                        isSel ? 'bg-surface-selected' : 'hover:bg-surface-hover'
+                      }`}
+                    >
+                      {label}
+                      {isSel && <Icon name="check" size={20} className="shrink-0 text-text-icon" />}
+                    </button>
+                  )
+                }
+                // Multi select — checkbox on the left.
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => toggle(opt.value)}
+                    className="flex w-full items-center gap-sm rounded-sm py-sm pr-sm text-left hover:bg-surface-hover"
+                  >
+                    <CheckBox checked={isSel} />
+                    {label}
+                  </button>
+                )
+              })}
+            </div>
+          ))}
 
           {filtered.length === 0 && (
             <p className="py-sm text-body text-text-tertiary">No results.</p>

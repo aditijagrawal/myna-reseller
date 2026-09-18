@@ -2,7 +2,12 @@ import { useEffect, useState } from 'react'
 import { Icon } from '../Icon/Icon'
 import { BackArrowIcon } from '../../assets/BackArrowIcon'
 import { SelectMenu } from '../SelectMenu/SelectMenu'
+import type { SelectOption } from '../SelectMenu/SelectMenu.types'
 import { FormDrawerProps, TemplateOption } from './FormDrawer.types'
+
+function toSelectOptions(options: string[] | SelectOption[] = []): SelectOption[] {
+  return options.map((o) => (typeof o === 'string' ? { value: o, label: o } : o))
+}
 
 export function FormDrawer({
   open,
@@ -101,6 +106,10 @@ export function FormDrawer({
         <div className="flex flex-1 flex-col gap-md overflow-y-auto px-2xl pb-2xl pt-md">
           {fields.map((field) => {
             const value = values[field.key] ?? ''
+            const displayValue =
+              field.type === 'select'
+                ? toSelectOptions(field.options).find((o) => o.value === value)?.label ?? value
+                : value
             return (
               <div key={field.key} className="flex flex-col gap-xs">
                 {field.type === 'textarea' ? (
@@ -136,7 +145,7 @@ export function FormDrawer({
                     }`}
                   >
                     <span className={`min-w-0 flex-1 truncate text-left text-body ${value ? 'text-text-primary' : 'text-text-tertiary'}`}>
-                      {value || field.placeholder || 'Select'}
+                      {displayValue || field.placeholder || 'Select'}
                     </span>
                     <Icon name="expand_more" size={20} className="shrink-0 text-text-icon" />
                   </button>
@@ -154,7 +163,7 @@ export function FormDrawer({
           <div className="fixed inset-0 z-[105]" onClick={() => setOpenField(null)} />
           <div className="fixed z-[110]" style={{ top: anchor.top, left: anchor.left, width: anchor.width }}>
             <SelectMenu
-              options={(activeSelectField.options ?? []).map((o) => ({ value: o, label: o }))}
+              options={toSelectOptions(activeSelectField.options)}
               value={values[activeSelectField.key] ? [values[activeSelectField.key]] : []}
               searchable={(activeSelectField.options ?? []).length > 6}
               onChange={(val) => {
