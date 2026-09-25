@@ -89,15 +89,15 @@ export function SelectMenu({
               className="flex w-full items-center gap-sm rounded-sm py-sm pr-sm text-left hover:bg-surface-hover"
             >
               <CheckBox checked={allSelected} />
-              <span className="min-w-0 flex-1 truncate text-body text-text-primary">All</span>
+              <span className="min-w-0 flex-1 truncate text-body text-text-primary">Select all</span>
             </button>
           )}
 
           {groups.map(({ group, items }) => (
             <div key={group ?? '__ungrouped__'} className="flex flex-col gap-xs">
               {hasGroups && group && (
-                <div className="px-md pt-sm">
-                  <span className="text-small text-text-tertiary">{group}</span>
+                <div className="pt-sm">
+                  <span className="text-small uppercase tracking-wide text-text-tertiary">{group}</span>
                 </div>
               )}
               {items.map((opt) => {

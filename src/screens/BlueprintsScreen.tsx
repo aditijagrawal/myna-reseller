@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
   ConfirmModal,
+  CustomizeColumnsDrawer,
   DataTable,
   FilterPanel,
   FormDrawer,
@@ -9,9 +10,12 @@ import {
   Link,
   Toast,
   TopNav,
+  type ColumnOption,
   type FilterField,
   type RowMenuItem,
   type SelectOption,
+  type TemplateCategory,
+  type TemplateItem,
 } from '../components'
 import { BackArrowIcon } from '../assets/BackArrowIcon'
 
@@ -35,6 +39,7 @@ interface BlueprintRow {
   businesses: number
   businessNames: string[]
   businessStatuses: Record<string, BusinessDeployStatus>
+  businessFeatureStatuses: Record<string, Record<string, BusinessDeployStatus>>
   sourceAccount: string
   updatedOn: string
 }
@@ -44,13 +49,17 @@ interface FeatureSection {
   items: string[]
 }
 
-function getFeatureSections(row: BlueprintRow): FeatureSection[] {
+function getFeatureSections(featureGroups: FeatureGroups): FeatureSection[] {
   return [
-    { label: 'Listing optimization agents', items: row.featureGroups.listingOptimizationAgents },
-    { label: 'Review generation agents', items: row.featureGroups.reviewGenerationAgents },
-    { label: 'Review response agents', items: row.featureGroups.reviewResponseAgents },
-    { label: 'Templates', items: row.featureGroups.templates },
+    { label: 'Listing optimization agents', items: featureGroups.listingOptimizationAgents },
+    { label: 'Review generation agents', items: featureGroups.reviewGenerationAgents },
+    { label: 'Review response agents', items: featureGroups.reviewResponseAgents },
+    { label: 'Templates', items: featureGroups.templates },
   ].filter((s) => s.items.length > 0)
+}
+
+function flattenFeatures(featureGroups: FeatureGroups): string[] {
+  return getFeatureSections(featureGroups).flatMap((s) => s.items)
 }
 
 const FEATURE_SECTION_NOTES: Record<string, string> = {
@@ -72,12 +81,39 @@ const FEATURE_ITEM_NOTES: Record<string, string> = {
   'Post-Visit Review Request': 'Ready to use once copied.',
 }
 
-function generateBusinessStatuses(names: string[]): Record<string, BusinessDeployStatus> {
-  const result: Record<string, BusinessDeployStatus> = {}
-  names.forEach((name, i) => {
-    result[name] = i % 5 === 4 ? 'Failed' : i % 4 === 3 ? 'In progress' : 'Completed'
+function generateBusinessFeatureStatuses(
+  businessNames: string[],
+  features: string[],
+): Record<string, Record<string, BusinessDeployStatus>> {
+  const result: Record<string, Record<string, BusinessDeployStatus>> = {}
+  businessNames.forEach((business, bi) => {
+    const featureStatuses: Record<string, BusinessDeployStatus> = {}
+    features.forEach((feature, fi) => {
+      const idx = bi * features.length + fi
+      featureStatuses[feature] = idx % 11 === 10 ? 'Failed' : idx % 7 === 6 ? 'In progress' : 'Completed'
+    })
+    result[business] = featureStatuses
   })
   return result
+}
+
+function aggregateStatus(featureStatuses: Record<string, BusinessDeployStatus>): BusinessDeployStatus {
+  const values = Object.values(featureStatuses)
+  if (values.includes('Failed')) return 'Failed'
+  if (values.includes('In progress')) return 'In progress'
+  return 'Completed'
+}
+
+function generateBusinessStatuses(
+  businessNames: string[],
+  features: string[],
+): { statuses: Record<string, BusinessDeployStatus>; featureStatuses: Record<string, Record<string, BusinessDeployStatus>> } {
+  const featureStatuses = generateBusinessFeatureStatuses(businessNames, features)
+  const statuses: Record<string, BusinessDeployStatus> = {}
+  businessNames.forEach((business) => {
+    statuses[business] = aggregateStatus(featureStatuses[business])
+  })
+  return { statuses, featureStatuses }
 }
 
 function DeployStatusChip({ status }: { status: BusinessDeployStatus }) {
@@ -93,6 +129,112 @@ function DeployStatusChip({ status }: { status: BusinessDeployStatus }) {
   )
 }
 
+function ViewStatusAccordion({
+  row,
+  expandedBusiness,
+  onToggleExpand,
+  onRetry,
+  onRetryFeature,
+}: {
+  row: BlueprintRow
+  expandedBusiness: string | null
+  onToggleExpand: (business: string) => void
+  onRetry: (business: string) => void
+  onRetryFeature: (business: string, feature: string) => void
+}) {
+  const businesses = Object.keys(row.businessStatuses).sort((a, b) =>
+    parseBusinessLabel(a).title.localeCompare(parseBusinessLabel(b).title),
+  )
+  const features = flattenFeatures(row.featureGroups)
+
+  return (
+    <div>
+      <div className="flex items-center px-md py-sm">
+        <span className="flex-1 text-small text-text-secondary">Businesses</span>
+        <span className="w-[140px] shrink-0 text-small text-text-secondary">Status</span>
+      </div>
+      {businesses.map((business) => {
+        const status = row.businessStatuses[business]
+        const { title, code } = parseBusinessLabel(business)
+        const expanded = expandedBusiness === business
+        return (
+          <div key={business} className="border-t border-border">
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => onToggleExpand(business)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  onToggleExpand(business)
+                }
+              }}
+              className={`group/row flex w-full cursor-pointer items-center gap-xs px-md py-sm text-left hover:bg-surface-hover ${
+                expanded ? 'bg-surface-hover' : ''
+              }`}
+            >
+              <Icon name={expanded ? 'expand_less' : 'expand_more'} size={18} className="shrink-0 text-text-icon" />
+              <span className="flex min-w-0 flex-1 flex-col">
+                <span className="truncate text-body text-text-primary">{title}</span>
+                <span className="truncate text-small text-text-tertiary">{code}</span>
+              </span>
+              <span className="flex w-[140px] shrink-0 items-center gap-xs">
+                <DeployStatusChip status={status} />
+                {status === 'Failed' && (
+                  <button
+                    type="button"
+                    aria-label="Retry"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onRetry(business)
+                    }}
+                    className="flex size-7 shrink-0 items-center justify-center rounded-sm text-text-icon opacity-0 hover:bg-surface-l2 group-hover/row:opacity-100"
+                  >
+                    <Icon name="sync" size={16} />
+                  </button>
+                )}
+              </span>
+            </div>
+            {expanded && (
+              <div className="bg-surface-l2 pl-[42px] pr-md">
+                {features.map((feature, fi) => {
+                  const featureStatus = row.businessFeatureStatuses[business]?.[feature] ?? status
+                  return (
+                    <div
+                      key={feature}
+                      className={`group/feature flex items-center py-sm ${
+                        fi < features.length - 1 ? 'border-b border-border' : ''
+                      }`}
+                    >
+                      <span className="min-w-0 flex-1 truncate text-body text-text-primary">{feature}</span>
+                      <span className="flex w-[140px] shrink-0 items-center gap-xs">
+                        <DeployStatusChip status={featureStatus} />
+                        {featureStatus === 'Failed' && (
+                          <button
+                            type="button"
+                            aria-label="Retry"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              onRetryFeature(business, feature)
+                            }}
+                            className="flex size-7 shrink-0 items-center justify-center rounded-sm text-text-icon opacity-0 hover:bg-surface-hover group-hover/feature:opacity-100"
+                          >
+                            <Icon name="sync" size={16} />
+                          </button>
+                        )}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 const LISTING_OPTIMIZATION_AGENTS = ['Listing Health Optimizer', 'Optimization 2', 'Optimization 3']
 const REVIEW_GENERATION_AGENTS = ['Post-Visit Review Generator', 'Generation - follow-up', 'Generation - reminder']
 const REVIEW_RESPONSE_AGENTS = ['AI Review Responder', 'Review response - negative', 'Review response - neutral']
@@ -104,6 +246,29 @@ const TEMPLATE_NAMES = [
   'Listing update template',
   'Escalation template',
 ]
+
+const TEMPLATE_PREVIEWS: Record<string, string> = {
+  'Post-Visit Review Request': 'Hi [Customer Name], thanks for visiting [Business Name]. Mind leaving us a quick review? It really helps.',
+  'Review response template': 'Thank you for sharing your feedback, [Customer Name]. We appreciate you taking the time to let us know.',
+  'Thank you template': 'Hi [Customer Name], just a note to say thank you for choosing [Business Name]. We hope to see you again soon.',
+  'Listing update template': 'Hi [Customer Name], our business hours and details have been updated — take a look and let us know if you have questions.',
+  'Escalation template': "Hi [Customer Name], we're sorry to hear about your experience. A member of our team will reach out shortly to make it right.",
+}
+
+const TEMPLATE_CATEGORIES: TemplateCategory[] = [
+  { id: 'reviews', label: 'Reviews', count: TEMPLATE_NAMES.length },
+  { id: 'referrals', label: 'Referrals', count: 120, disabled: true },
+  { id: 'surveys', label: 'Surveys', count: 120, disabled: true },
+  { id: 'cx', label: 'Customer experience', count: 100, disabled: true },
+  { id: 'custom', label: 'Custom', count: 100, disabled: true },
+]
+
+const TEMPLATE_ITEMS: TemplateItem[] = TEMPLATE_NAMES.map((name) => ({
+  id: name,
+  category: 'reviews',
+  title: name,
+  preview: TEMPLATE_PREVIEWS[name] ?? '',
+}))
 
 const ALL_AGENT_NAMES = [...LISTING_OPTIMIZATION_AGENTS, ...REVIEW_GENERATION_AGENTS, ...REVIEW_RESPONSE_AGENTS]
 
@@ -144,6 +309,7 @@ function buildRow(
     featureGroups.reviewResponseAgents.length +
     featureGroups.templates.length
   const businessNames = take(BUSINESS_NAMES, businesses, offset)
+  const { statuses, featureStatuses } = generateBusinessStatuses(businessNames, flattenFeatures(featureGroups))
   return {
     name,
     lastUpdatedBy,
@@ -152,7 +318,8 @@ function buildRow(
     featureGroups,
     businesses,
     businessNames,
-    businessStatuses: generateBusinessStatuses(businessNames),
+    businessStatuses: statuses,
+    businessFeatureStatuses: featureStatuses,
     sourceAccount,
     updatedOn,
   }
@@ -236,6 +403,16 @@ interface CellMenuState {
   left: number
 }
 
+interface ColumnDef {
+  key: string
+  label: string
+  sortable?: boolean
+  locked?: boolean
+  render?: (value: unknown, row: unknown) => ReactNode
+}
+
+const DEFAULT_COLUMN_ORDER = ['name', 'updatedOn', 'sourceAccount', 'features', 'businesses']
+
 interface BlueprintsScreenProps {
   onBack: () => void
 }
@@ -246,6 +423,9 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
   const [search, setSearch] = useState('')
   const [bannerDismissed, setBannerDismissed] = useState(false)
   const [filterOpen, setFilterOpen] = useState(false)
+  const [customizeOpen, setCustomizeOpen] = useState(false)
+  const [columnOrder, setColumnOrder] = useState<string[]>(DEFAULT_COLUMN_ORDER)
+  const [visibleColumns, setVisibleColumns] = useState<string[]>(DEFAULT_COLUMN_ORDER)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [editingRowName, setEditingRowName] = useState<string | null>(null)
   const [cellMenu, setCellMenu] = useState<CellMenuState | null>(null)
@@ -253,7 +433,9 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
   const [deployStep, setDeployStep] = useState<'select' | 'note'>('select')
   const [deploySelected, setDeploySelected] = useState<string[]>([])
   const [deploySearch, setDeploySearch] = useState('')
+  const [expandedNoteItems, setExpandedNoteItems] = useState<string[]>([])
   const [viewStatusRowName, setViewStatusRowName] = useState<string | null>(null)
+  const [expandedStatusBusiness, setExpandedStatusBusiness] = useState<string | null>(null)
   const [confirmAction, setConfirmAction] = useState<{ type: 'delete' | 'duplicate'; rowName: string } | null>(null)
   const [deployConfirmOpen, setDeployConfirmOpen] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
@@ -279,8 +461,13 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
       setDeploySearch('')
       setDeployStep('select')
       setDeployConfirmOpen(false)
+      setExpandedNoteItems([])
     }
   }, [deployRow])
+
+  useEffect(() => {
+    setExpandedStatusBusiness(null)
+  }, [viewStatusRowName])
 
   const filteredBusinessOptions = useMemo(
     () => BUSINESS_NAMES.filter((b) => b.toLowerCase().includes(deploySearch.trim().toLowerCase())),
@@ -290,11 +477,12 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
   const addableOptions = filteredBusinessOptions.filter((b) => !alreadyDeployed.includes(b))
   const allSelected = addableOptions.length > 0 && addableOptions.every((b) => deploySelected.includes(b))
 
-  const columns = [
+  const COLUMN_DEFS: ColumnDef[] = [
     {
-      key: 'name' as const,
+      key: 'name',
       label: 'Name',
       sortable: true,
+      locked: true,
       render: (_: unknown, row: unknown) => {
         const r = row as BlueprintRow
         return (
@@ -313,8 +501,10 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
         )
       },
     },
+    { key: 'updatedOn', label: 'Updated on', sortable: true },
+    { key: 'sourceAccount', label: 'Source account', sortable: true },
     {
-      key: 'features' as const,
+      key: 'features',
       label: 'Features',
       sortable: true,
       render: (_: unknown, row: unknown) => {
@@ -334,7 +524,7 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
       },
     },
     {
-      key: 'businesses' as const,
+      key: 'businesses',
       label: 'Businesses',
       sortable: true,
       render: (_: unknown, row: unknown) => {
@@ -353,9 +543,18 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
         )
       },
     },
-    { key: 'sourceAccount' as const, label: 'Source account', sortable: true },
-    { key: 'updatedOn' as const, label: 'Updated on', sortable: true },
   ]
+
+  const DEF_BY_KEY = new Map(COLUMN_DEFS.map((c) => [c.key, c]))
+  const columns = columnOrder
+    .filter((k) => visibleColumns.includes(k))
+    .map((k) => DEF_BY_KEY.get(k))
+    .filter((c): c is ColumnDef => Boolean(c))
+  const columnOptions: ColumnOption[] = columnOrder.map((k) => ({
+    key: k,
+    label: DEF_BY_KEY.get(k)?.label ?? k,
+    locked: DEF_BY_KEY.get(k)?.locked,
+  }))
 
   const rowMenuItems: RowMenuItem<Record<string, unknown>>[] = [
     {
@@ -367,7 +566,7 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
       },
       description: (row) => {
         const r = row as unknown as BlueprintRow
-        return r.status === 'Syncing' ? 'Creating blueprint..' : 'No new business'
+        return r.status === 'Syncing' ? 'Creating managed package..' : 'No new business'
       },
     },
     {
@@ -388,13 +587,13 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
 
   const CONFIRM_COPY: Record<'delete' | 'duplicate', { title: string; description: string; confirmLabel: string }> = {
     delete: {
-      title: 'Delete this blueprint?',
-      description: 'This only deletes the blueprint. Businesses that already received it keep their copies as-is.',
+      title: 'Delete this managed package?',
+      description: 'This permanently deletes the managed package. Businesses that already received it keep their current features, but won’t get future updates from it.',
       confirmLabel: 'Delete',
     },
     duplicate: {
-      title: 'Duplicate this blueprint?',
-      description: 'This creates an exact copy of this blueprint, including its source account and selected features',
+      title: 'Duplicate this managed package?',
+      description: 'This creates an exact copy of this managed package, including its source account and selected features',
       confirmLabel: 'Duplicate',
     },
   }
@@ -405,24 +604,24 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
 
     if (type === 'delete') {
       setRows((prev) => prev.filter((r) => r.name !== rowName))
-      showToast('Blueprint deleted')
+      showToast('Managed package deleted')
     } else if (type === 'duplicate') {
       setRows((prev) => {
         const source = prev.find((r) => r.name === rowName)
         if (!source) return prev
         const copyName = `${source.name} copy`
         return [
-          { ...source, name: copyName, status: 'Draft', updatedOn: today(), businesses: 0, businessNames: [], businessStatuses: {} },
+          { ...source, name: copyName, status: 'Draft', updatedOn: today(), businesses: 0, businessNames: [], businessStatuses: {}, businessFeatureStatuses: {} },
           ...prev,
         ]
       })
-      showToast('Blueprint duplicated')
+      showToast('Managed package duplicated')
     }
 
     setConfirmAction(null)
   }
 
-  const FEATURE_SECTIONS: FeatureSection[] = activeCellRow ? getFeatureSections(activeCellRow) : []
+  const FEATURE_SECTIONS: FeatureSection[] = activeCellRow ? getFeatureSections(activeCellRow.featureGroups) : []
 
   function toggleBusiness(name: string) {
     if (alreadyDeployed.includes(name)) return
@@ -440,27 +639,50 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
       prev.map((r) => {
         if (r.name !== deployRowName) return r
         const businessNames = [...r.businessNames, ...deploySelected]
+        const { statuses, featureStatuses } = generateBusinessStatuses(deploySelected, flattenFeatures(r.featureGroups))
         return {
           ...r,
           businessNames,
           businesses: businessNames.length,
-          businessStatuses: { ...r.businessStatuses, ...generateBusinessStatuses(deploySelected) },
+          businessStatuses: { ...r.businessStatuses, ...statuses },
+          businessFeatureStatuses: { ...r.businessFeatureStatuses, ...featureStatuses },
           updatedOn: today(),
         }
       }),
     )
     setDeployConfirmOpen(false)
     setDeployRowName(null)
-    showToast('Blueprint deployed')
+    showToast('Managed package deployed')
   }
 
   function retryBusiness(rowName: string, businessName: string) {
     setRows((prev) =>
-      prev.map((r) =>
-        r.name === rowName
-          ? { ...r, businessStatuses: { ...r.businessStatuses, [businessName]: 'Completed' } }
-          : r,
-      ),
+      prev.map((r) => {
+        if (r.name !== rowName) return r
+        const resetFeatures: Record<string, BusinessDeployStatus> = {}
+        Object.keys(r.businessFeatureStatuses[businessName] ?? {}).forEach((feature) => {
+          resetFeatures[feature] = 'Completed'
+        })
+        return {
+          ...r,
+          businessStatuses: { ...r.businessStatuses, [businessName]: 'Completed' },
+          businessFeatureStatuses: { ...r.businessFeatureStatuses, [businessName]: resetFeatures },
+        }
+      }),
+    )
+  }
+
+  function retryFeature(rowName: string, businessName: string, feature: string) {
+    setRows((prev) =>
+      prev.map((r) => {
+        if (r.name !== rowName) return r
+        const updatedFeatures = { ...(r.businessFeatureStatuses[businessName] ?? {}), [feature]: 'Completed' as BusinessDeployStatus }
+        return {
+          ...r,
+          businessStatuses: { ...r.businessStatuses, [businessName]: aggregateStatus(updatedFeatures) },
+          businessFeatureStatuses: { ...r.businessFeatureStatuses, [businessName]: updatedFeatures },
+        }
+      }),
     )
   }
 
@@ -476,20 +698,20 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
               Settings
             </Link>
             <Icon name="chevron_right" size={16} className="text-text-tertiary" />
-            <span className="text-body text-text-primary">Blueprints</span>
+            <span className="text-body text-text-primary">Managed packages</span>
           </div>
 
           {/* Header bar */}
           <div className="sticky top-0 z-10 flex items-center justify-between bg-surface px-2xl py-xl">
             <div className="flex flex-col gap-xs">
-              <h1 className="text-h3 text-text-primary">Blueprints</h1>
+              <h1 className="text-h3 text-text-primary">Managed packages</h1>
               <p className="text-small text-text-secondary">
                 Build a feature in your source account once and apply it to other businesses
               </p>
             </div>
 
             <div className="flex items-center gap-sm">
-              <HeaderSearchField open={searchOpen} value={search} onOpenChange={setSearchOpen} onChange={setSearch} placeholder="Search blueprints…" />
+              <HeaderSearchField open={searchOpen} value={search} onOpenChange={setSearchOpen} onChange={setSearch} placeholder="Search managed packages…" />
               <button
                 type="button"
                 onClick={() => {
@@ -498,7 +720,15 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
                 }}
                 className="flex h-9 items-center rounded-sm bg-primary px-lg text-body text-white transition-colors hover:bg-primary-hover"
               >
-                Create a new blueprint
+                Create a new managed package
+              </button>
+              <button
+                type="button"
+                aria-label="Customize columns"
+                onClick={() => setCustomizeOpen(true)}
+                className="flex size-9 items-center justify-center rounded-sm border border-border-selected bg-surface text-text-icon hover:bg-surface-l2"
+              >
+                <Icon name="view_column" size={20} />
               </button>
               <button
                 type="button"
@@ -516,7 +746,7 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
             <div className="mx-2xl mb-md flex items-start gap-sm rounded-sm bg-primary/5 px-md py-sm">
               <Icon name="info" size={18} className="mt-0.5 shrink-0 text-primary" />
               <p className="flex-1 text-small text-text-primary">
-                When the source account is updated the blueprint will automatically get synced and deploy the changes to businesses
+                When the source account is updated the managed package will automatically get synced and deploy the changes to businesses
               </p>
               <button
                 type="button"
@@ -599,8 +829,7 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
               >
                 <BackArrowIcon />
               </button>
-              <h2 className="text-[16px] leading-6 tracking-[-0.32px] text-text-primary">{deployRowName}</h2>
-              {deployStep === 'note' && <Icon name="info" size={20} className="text-text-icon" />}
+              <h2 className="text-[16px] leading-6 tracking-[-0.32px] text-text-primary">Deploy</h2>
             </div>
             {deployStep === 'select' ? (
               <button
@@ -675,17 +904,42 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
             <div className="flex flex-1 flex-col gap-lg overflow-y-auto px-2xl pb-2xl pt-md">
               <label className="text-small text-text-primary">Please note</label>
               {deployRow &&
-                getFeatureSections(deployRow).map((section) => (
-                  <div key={section.label} className="flex flex-col gap-md">
-                    <p className="text-small text-text-tertiary">{section.label}</p>
-                    {section.items.map((item) => (
-                      <div key={item} className="flex flex-col gap-xs">
-                        <p className="text-body text-text-primary">{item}</p>
-                        <p className="text-body text-text-secondary">
-                          {FEATURE_ITEM_NOTES[item] ?? FEATURE_SECTION_NOTES[section.label]}
-                        </p>
-                      </div>
-                    ))}
+                getFeatureSections(deployRow.featureGroups).map((section, index, sections) => (
+                  <div
+                    key={section.label}
+                    className={`flex flex-col gap-md ${
+                      index < sections.length - 1 ? 'border-b border-border pb-lg' : ''
+                    }`}
+                  >
+                    <p className="text-[11px] uppercase tracking-wide text-text-tertiary">{section.label}</p>
+                    {section.items.map((item) => {
+                      const noteExpanded = expandedNoteItems.includes(item)
+                      return (
+                        <div key={item} className="flex flex-col">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setExpandedNoteItems((prev) =>
+                                prev.includes(item) ? prev.filter((i) => i !== item) : [...prev, item],
+                              )
+                            }
+                            className="flex items-center gap-xs py-xs text-left"
+                          >
+                            <Icon
+                              name={noteExpanded ? 'expand_less' : 'expand_more'}
+                              size={18}
+                              className="shrink-0 text-text-icon"
+                            />
+                            <p className="text-body text-text-primary">{item}</p>
+                          </button>
+                          {noteExpanded && (
+                            <p className="pl-[26px] text-body text-text-secondary">
+                              {FEATURE_ITEM_NOTES[item] ?? FEATURE_SECTION_NOTES[section.label]}
+                            </p>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
                 ))}
             </div>
@@ -713,28 +967,19 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
             >
               <BackArrowIcon />
             </button>
-            <h2 className="text-[16px] leading-6 tracking-[-0.32px] text-text-primary">{viewStatusRowName}</h2>
+            <h2 className="text-[16px] leading-6 tracking-[-0.32px] text-text-primary">Status</h2>
           </div>
 
           <div className="flex-1 overflow-y-auto px-2xl pb-2xl">
             {viewStatusRow && (
-              <DataTable
-                columns={[
-                  { key: 'business', label: 'Businesses', sortable: true },
-                  {
-                    key: 'status',
-                    label: 'Status',
-                    sortable: true,
-                    render: (v) => <DeployStatusChip status={v as BusinessDeployStatus} />,
-                  },
-                ]}
-                data={Object.entries(viewStatusRow.businessStatuses).map(([business, status]) => ({ business, status }))}
-                rowAction={{
-                  icon: 'sync',
-                  label: 'Retry',
-                  visible: (row) => (row as unknown as { status: BusinessDeployStatus }).status === 'Failed',
-                  onClick: (row) => retryBusiness(viewStatusRowName!, (row as unknown as { business: string }).business),
-                }}
+              <ViewStatusAccordion
+                row={viewStatusRow}
+                expandedBusiness={expandedStatusBusiness}
+                onToggleExpand={(business) =>
+                  setExpandedStatusBusiness((prev) => (prev === business ? null : business))
+                }
+                onRetry={(business) => retryBusiness(viewStatusRowName!, business)}
+                onRetryFeature={(business, feature) => retryFeature(viewStatusRowName!, business, feature)}
               />
             )}
           </div>
@@ -763,15 +1008,15 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
         onConfirm={deploy}
       />
 
-      {/* Create / edit blueprint drawer */}
+      {/* Create / edit managed package drawer */}
       <FormDrawer
         open={drawerOpen}
-        title={editingRow ? editingRow.name : 'New blueprint'}
+        title={editingRow ? editingRow.name : 'New managed package'}
         fields={[
-          { key: 'name', label: 'Name', type: 'text', placeholder: 'Example: Positive review agent blueprint' },
+          { key: 'name', label: 'Name', type: 'text', placeholder: 'Example: Positive review agent package' },
           { key: 'sourceAccount', label: 'Source account', type: 'select', options: BUSINESS_SELECT_OPTIONS },
-          { key: 'agents', label: 'Agents', type: 'select', options: AGENT_SELECT_OPTIONS },
-          { key: 'templates', label: 'Templates', type: 'select', options: TEMPLATE_NAMES },
+          { key: 'agents', label: 'Agents', type: 'select', options: AGENT_SELECT_OPTIONS, multi: true },
+          { key: 'templates', label: 'Templates', type: 'template-modal', templateCategories: TEMPLATE_CATEGORIES, templateItems: TEMPLATE_ITEMS },
         ]}
         submitLabel="Save"
         requiredKeys={['name', 'sourceAccount']}
@@ -780,34 +1025,33 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
             ? {
                 name: editingRow.name,
                 sourceAccount: editingRow.sourceAccount,
-                agents:
-                  editingRow.featureGroups.listingOptimizationAgents[0] ??
-                  editingRow.featureGroups.reviewGenerationAgents[0] ??
-                  editingRow.featureGroups.reviewResponseAgents[0] ??
-                  '',
-                templates: editingRow.featureGroups.templates[0] ?? '',
+                agents: [
+                  ...editingRow.featureGroups.listingOptimizationAgents,
+                  ...editingRow.featureGroups.reviewGenerationAgents,
+                  ...editingRow.featureGroups.reviewResponseAgents,
+                ].join(','),
+                templates: editingRow.featureGroups.templates.join(','),
               }
             : undefined
         }
         onClose={() => setDrawerOpen(false)}
         onSubmit={(values) => {
-          const agent = values.agents
-          const isListing = LISTING_OPTIMIZATION_AGENTS.includes(agent)
-          const isGeneration = REVIEW_GENERATION_AGENTS.includes(agent)
-          const isResponse = REVIEW_RESPONSE_AGENTS.includes(agent)
+          const selectedAgents = values.agents ? values.agents.split(',').filter(Boolean) : []
+          const selectedTemplates = values.templates ? values.templates.split(',').filter(Boolean) : []
           const featureGroups: FeatureGroups = {
-            listingOptimizationAgents: isListing ? [agent] : [],
-            reviewGenerationAgents: isGeneration ? [agent] : [],
-            reviewResponseAgents: isResponse ? [agent] : [],
-            templates: values.templates ? [values.templates] : [],
+            listingOptimizationAgents: selectedAgents.filter((a) => LISTING_OPTIMIZATION_AGENTS.includes(a)),
+            reviewGenerationAgents: selectedAgents.filter((a) => REVIEW_GENERATION_AGENTS.includes(a)),
+            reviewResponseAgents: selectedAgents.filter((a) => REVIEW_RESPONSE_AGENTS.includes(a)),
+            templates: selectedTemplates,
           }
-          const features = (agent ? 1 : 0) + (values.templates ? 1 : 0)
+          const features = selectedAgents.length + selectedTemplates.length
+          const sourceAccountName = parseBusinessLabel(values.sourceAccount).title
 
           if (editingRowName) {
             setRows((prev) =>
               prev.map((r) =>
                 r.name === editingRowName
-                  ? { ...r, name: values.name, sourceAccount: values.sourceAccount, featureGroups, features, updatedOn: today() }
+                  ? { ...r, name: values.name, sourceAccount: sourceAccountName, featureGroups, features, updatedOn: today() }
                   : r,
               ),
             )
@@ -822,15 +1066,31 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
                 businesses: 0,
                 businessNames: [],
                 businessStatuses: {},
-                sourceAccount: values.sourceAccount,
+                businessFeatureStatuses: {},
+                sourceAccount: sourceAccountName,
                 updatedOn: today(),
               },
               ...prev,
             ])
-            showToast('Blueprint created')
+            showToast('Managed package created')
           }
           setDrawerOpen(false)
           setEditingRowName(null)
+        }}
+      />
+
+      <CustomizeColumnsDrawer
+        open={customizeOpen}
+        options={columnOptions}
+        visibleKeys={visibleColumns}
+        onClose={() => setCustomizeOpen(false)}
+        onSave={(orderedKeys, visibleKeys) => {
+          setColumnOrder(orderedKeys)
+          setVisibleColumns(visibleKeys)
+        }}
+        onRestoreDefault={() => {
+          setColumnOrder(DEFAULT_COLUMN_ORDER)
+          setVisibleColumns(DEFAULT_COLUMN_ORDER)
         }}
       />
 

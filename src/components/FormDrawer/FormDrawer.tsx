@@ -3,6 +3,7 @@ import { Icon } from '../Icon/Icon'
 import { BackArrowIcon } from '../../assets/BackArrowIcon'
 import { SelectMenu } from '../SelectMenu/SelectMenu'
 import type { SelectOption } from '../SelectMenu/SelectMenu.types'
+import { TemplatePickerModal } from '../TemplatePicker/TemplatePicker'
 import { FormDrawerProps, TemplateOption } from './FormDrawer.types'
 
 function toSelectOptions(options: string[] | SelectOption[] = []): SelectOption[] {
@@ -35,6 +36,10 @@ export function FormDrawer({
   const required = requiredKeys ?? fields.map((f) => f.key)
   const canSubmit = required.every((k) => !!values[k])
 
+  function getMultiValues(key: string): string[] {
+    return values[key] ? values[key].split(',').filter(Boolean) : []
+  }
+
   function openMenu(key: string, e: React.MouseEvent<HTMLButtonElement>) {
     if (openField === key) {
       setOpenField(null)
@@ -50,6 +55,7 @@ export function FormDrawer({
   const activeField = fields.find((f) => f.key === openField && (f.type === 'select' || f.type === 'template-picker'))
   const activeTemplateField = activeField?.type === 'template-picker' ? activeField : null
   const activeSelectField = activeField?.type === 'select' ? activeField : null
+  const activeModalField = fields.find((f) => f.key === openField && f.type === 'template-modal')
 
   return (
     <div className={`fixed inset-0 z-[100] ${open ? '' : 'pointer-events-none'}`} aria-hidden={!open}>
@@ -108,8 +114,16 @@ export function FormDrawer({
             const value = values[field.key] ?? ''
             const displayValue =
               field.type === 'select'
-                ? toSelectOptions(field.options).find((o) => o.value === value)?.label ?? value
-                : value
+                ? field.multi
+                  ? getMultiValues(field.key)
+                      .map((v) => toSelectOptions(field.options).find((o) => o.value === v)?.label ?? v)
+                      .join(', ')
+                  : toSelectOptions(field.options).find((o) => o.value === value)?.label ?? value
+                : field.type === 'template-modal'
+                  ? getMultiValues(field.key)
+                      .map((v) => (field.templateItems ?? []).find((t) => t.id === v)?.title ?? v)
+                      .join(', ')
+                  : value
             return (
               <div key={field.key} className="flex flex-col gap-xs">
                 {field.type === 'textarea' ? (
@@ -164,12 +178,24 @@ export function FormDrawer({
           <div className="fixed z-[110]" style={{ top: anchor.top, left: anchor.left, width: anchor.width }}>
             <SelectMenu
               options={toSelectOptions(activeSelectField.options)}
-              value={values[activeSelectField.key] ? [values[activeSelectField.key]] : []}
+              value={
+                activeSelectField.multi
+                  ? getMultiValues(activeSelectField.key)
+                  : values[activeSelectField.key]
+                    ? [values[activeSelectField.key]]
+                    : []
+              }
+              multi={activeSelectField.multi}
               searchable={(activeSelectField.options ?? []).length > 6}
               onChange={(val) => {
-                setValues((v) => ({ ...v, [activeSelectField.key]: val[0] ?? '' }))
-                setOpenField(null)
+                if (activeSelectField.multi) {
+                  setValues((v) => ({ ...v, [activeSelectField.key]: val.join(',') }))
+                } else {
+                  setValues((v) => ({ ...v, [activeSelectField.key]: val[0] ?? '' }))
+                  setOpenField(null)
+                }
               }}
+              onApply={activeSelectField.multi ? () => setOpenField(null) : undefined}
             />
           </div>
         </>
@@ -238,6 +264,22 @@ export function FormDrawer({
             </div>
           </div>
         </>
+      )}
+
+      {/* Template picker modal — centered, no backdrop of its own (the drawer already dims the page) */}
+      {activeModalField && (
+        <TemplatePickerModal
+          isOpen
+          categories={activeModalField.templateCategories}
+          items={activeModalField.templateItems}
+          initialSelected={getMultiValues(activeModalField.key)}
+          enableAiTab
+          onClose={() => setOpenField(null)}
+          onSelect={(ids) => {
+            setValues((v) => ({ ...v, [activeModalField.key]: ids.join(',') }))
+            setOpenField(null)
+          }}
+        />
       )}
     </div>
   )

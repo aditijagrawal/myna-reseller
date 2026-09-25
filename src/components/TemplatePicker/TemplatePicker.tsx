@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { Chip } from '../Chip/Chip'
 import { Icon } from '../Icon/Icon'
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
@@ -15,6 +16,7 @@ export interface TemplateCategory {
   id: string
   label: string
   count: number
+  disabled?: boolean
 }
 
 export const TEMPLATE_CATEGORIES: TemplateCategory[] = [
@@ -57,14 +59,36 @@ export interface TemplatePickerModalProps {
   onClose: () => void
   onSelect: (ids: string[]) => void
   initialSelected?: string[]
+  categories?: TemplateCategory[]
+  items?: TemplateItem[]
+  /** Show the "Templates" / "Templates AI" tab row (with the A/B-testing banner on the AI tab). */
+  enableAiTab?: boolean
 }
 
-export function TemplatePickerModal({ isOpen, onClose, onSelect, initialSelected = [] }: TemplatePickerModalProps) {
-  const [activeCategory, setActiveCategory] = useState('appointment')
+export function TemplatePickerModal({
+  isOpen,
+  onClose,
+  onSelect,
+  initialSelected = [],
+  categories = TEMPLATE_CATEGORIES,
+  items = TEMPLATE_LIST,
+  enableAiTab = false,
+}: TemplatePickerModalProps) {
+  const [mainTab, setMainTab] = useState<'templates' | 'templatesAI'>('templates')
+  const [activeCategory, setActiveCategory] = useState(categories.find((c) => !c.disabled)?.id ?? categories[0]?.id)
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<Set<string>>(new Set(initialSelected))
 
-  const filtered = TEMPLATE_LIST.filter(
+  useEffect(() => {
+    if (isOpen) {
+      setSelected(new Set(initialSelected))
+      setMainTab('templates')
+      setActiveCategory(categories.find((c) => !c.disabled)?.id ?? categories[0]?.id)
+      setSearch('')
+    }
+  }, [isOpen])
+
+  const filtered = items.filter(
     (t) =>
       t.category === activeCategory &&
       (search === '' || t.title.toLowerCase().includes(search.toLowerCase()))
@@ -81,11 +105,12 @@ export function TemplatePickerModal({ isOpen, onClose, onSelect, initialSelected
   if (!isOpen) return null
 
   return createPortal(
+    // No dark backdrop here — this modal is opened from inside drawers/panels that already
+    // dim the page; a second backdrop on top would double-darken the screen.
     <div
       className="fixed inset-0 z-[200] flex items-center justify-center"
       onClick={onClose}
     >
-      <div className="absolute inset-0 bg-black/40" />
       <div
         className="relative flex max-h-[80vh] w-[720px] max-w-[95vw] flex-col overflow-hidden rounded-md bg-surface shadow-modal"
         onClick={(e) => e.stopPropagation()}
@@ -108,11 +133,30 @@ export function TemplatePickerModal({ isOpen, onClose, onSelect, initialSelected
           </button>
         </div>
 
+        {enableAiTab && (
+          <div className="flex items-end gap-lg border-t border-border px-md">
+            {(['templates', 'templatesAI'] as const).map((tab) => {
+              const active = tab === mainTab
+              return (
+                <button key={tab} type="button" onClick={() => setMainTab(tab)} className="flex flex-col items-stretch">
+                  <span className={`flex items-center gap-xs px-sm py-sm text-body ${active ? 'text-text-primary' : 'text-text-secondary'}`}>
+                    {tab === 'templates' ? 'Templates' : 'Templates AI'}
+                    {tab === 'templatesAI' && <Chip label="New" variant="success" />}
+                  </span>
+                  <span className={`h-[2px] w-full ${active ? 'bg-primary' : 'bg-transparent'}`} />
+                </button>
+              )
+            })}
+          </div>
+        )}
+
         {/* Info bar */}
         <div className="flex items-center gap-sm border-t border-border bg-[#e8f4fd] px-md py-sm">
           <Icon name="info" size={16} className="shrink-0 text-[#1976d2]" />
           <span className="text-small text-text-primary">
-            Select a template to pre-fill the message. You can edit it before sending.
+            {enableAiTab && mainTab === 'templatesAI'
+              ? 'Select multiple templates of the same type for A/B testing. Deselect all to test templates of a different type.'
+              : 'Select a template to pre-fill the message. You can edit it before sending.'}
           </span>
         </div>
 
@@ -133,15 +177,18 @@ export function TemplatePickerModal({ isOpen, onClose, onSelect, initialSelected
         <div className="flex min-h-0 flex-1 overflow-hidden">
           {/* Sidebar */}
           <div className="w-[190px] shrink-0 overflow-y-auto border-r border-border pt-xs">
-            {TEMPLATE_CATEGORIES.map((cat) => (
+            {categories.map((cat) => (
               <button
                 key={cat.id}
                 type="button"
+                disabled={cat.disabled}
                 onClick={() => setActiveCategory(cat.id)}
                 className={`flex w-full items-center justify-between border-l-2 px-md py-sm text-left text-body transition-colors ${
-                  activeCategory === cat.id
-                    ? 'border-primary bg-[#f0f6ff] text-primary'
-                    : 'border-transparent text-text-secondary hover:bg-surface-hover'
+                  cat.disabled
+                    ? 'cursor-not-allowed border-transparent text-text-tertiary'
+                    : activeCategory === cat.id
+                      ? 'border-primary bg-[#f0f6ff] text-primary'
+                      : 'border-transparent text-text-secondary hover:bg-surface-hover'
                 }`}
               >
                 <span>{cat.label}</span>
