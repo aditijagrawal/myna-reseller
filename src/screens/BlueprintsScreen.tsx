@@ -13,6 +13,7 @@ import {
   TopNav,
   type ColumnOption,
   type FilterField,
+  type RowAction,
   type RowMenuItem,
   type SelectOption,
   type TemplateCategory,
@@ -576,18 +577,10 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
       render: (_: unknown, row: unknown) => {
         const r = row as BlueprintRow
         return (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              setEditingRowName(r.name)
-              setDrawerOpen(true)
-            }}
-            className="flex flex-col text-left"
-          >
-            <span className="text-body text-text-primary group-hover/row:text-primary">{r.name}</span>
+          <div className="flex flex-col">
+            <span className="text-body text-text-primary">{r.name}</span>
             <span className="text-small text-text-secondary">Last updated by {r.lastUpdatedBy}</span>
-          </button>
+          </div>
         )
       },
     },
@@ -660,43 +653,6 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
 
   const rowMenuItems: RowMenuItem<Record<string, unknown>>[] = [
     {
-      label: 'Deploy',
-      onClick: (row) => setDeployRowName((row as unknown as BlueprintRow).name),
-      disabled: (row) => {
-        const r = row as unknown as BlueprintRow
-        return (
-          r.status === 'Package being created' ||
-          r.status === 'Package creation failed' ||
-          r.status === 'Package deployment in progress' ||
-          r.businessNames.length >= BUSINESS_NAMES.length
-        )
-      },
-      description: (row) => {
-        const r = row as unknown as BlueprintRow
-        if (r.status === 'Package being created') return 'Package is still being created'
-        if (r.status === 'Package creation failed') return 'Package creation failed'
-        if (r.status === 'Package deployment in progress') return 'Deployment in progress'
-        return 'No new business'
-      },
-    },
-    {
-      label: 'Retry',
-      onClick: (row) => retryPackageCreation((row as unknown as BlueprintRow).name),
-      visible: (row) => (row as unknown as BlueprintRow).status === 'Package creation failed',
-    },
-    {
-      label: 'View status',
-      onClick: (row) => setViewStatusRowName((row as unknown as BlueprintRow).name),
-      visible: (row) => {
-        const status = (row as unknown as BlueprintRow).status
-        return (
-          status === 'Package deployment in progress' ||
-          status === 'Package deployed' ||
-          status === 'Package partially deployed'
-        )
-      },
-    },
-    {
       label: 'Delete',
       onClick: (row) => setConfirmAction({ type: 'delete', rowName: (row as unknown as BlueprintRow).name }),
       variant: 'danger',
@@ -704,6 +660,37 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
     {
       label: 'Duplicate',
       onClick: (row) => setConfirmAction({ type: 'duplicate', rowName: (row as unknown as BlueprintRow).name }),
+    },
+  ]
+
+  const rowActions: RowAction<Record<string, unknown>>[] = [
+    {
+      icon: 'rocket_launch',
+      label: 'Deploy',
+      onClick: (row) => setDeployRowName((row as unknown as BlueprintRow).name),
+      visible: (row) => {
+        const r = row as unknown as BlueprintRow
+        if (r.status === 'Package ready to deploy') return true
+        if (r.status === 'Package deployed') return r.businessNames.length < BUSINESS_NAMES.length
+        return false
+      },
+    },
+    {
+      icon: 'visibility',
+      label: 'View status',
+      onClick: (row) => setViewStatusRowName((row as unknown as BlueprintRow).name),
+      visible: (row) => {
+        const r = row as unknown as BlueprintRow
+        if (r.status === 'Package deployment in progress' || r.status === 'Package partially deployed') return true
+        if (r.status === 'Package deployed') return r.businessNames.length >= BUSINESS_NAMES.length
+        return false
+      },
+    },
+    {
+      icon: 'refresh',
+      label: 'Retry',
+      onClick: (row) => retryPackageCreation((row as unknown as BlueprintRow).name),
+      visible: (row) => (row as unknown as BlueprintRow).status === 'Package creation failed',
     },
   ]
 
@@ -899,7 +886,12 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
 
           {/* Table */}
           <div className="px-2xl">
-            <DataTable columns={columns} data={filtered as unknown as Record<string, unknown>[]} rowMenuItems={rowMenuItems} />
+            <DataTable
+              columns={columns}
+              data={filtered as unknown as Record<string, unknown>[]}
+              rowActions={rowActions}
+              rowMenuItems={rowMenuItems}
+            />
           </div>
         </div>
 
