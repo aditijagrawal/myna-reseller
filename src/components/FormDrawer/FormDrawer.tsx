@@ -273,6 +273,8 @@ export function FormDrawer({
           isOpen
           categories={activeModalField.templateCategories}
           items={activeModalField.templateItems}
+          groups={activeModalField.type === 'agent-modal' ? activeModalField.templateGroups : undefined}
+          showCategoryMeta={activeModalField.type !== 'agent-modal'}
           initialSelected={getMultiValues(activeModalField.key)}
           enableAiTab={activeModalField.type === 'template-modal'}
           headerLabel={activeModalField.type === 'agent-modal' ? 'Agents' : undefined}

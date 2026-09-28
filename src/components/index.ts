@@ -149,7 +149,7 @@ export type { ViewActivityDrawerProps } from './ViewActivityDrawer/ViewActivityD
 export { SendReminderDrawer } from './SendReminderDrawer/SendReminderDrawer'
 export type { SendReminderDrawerProps } from './SendReminderDrawer/SendReminderDrawer.types'
 export { TemplatePickerModal, TemplateSelectField, TEMPLATE_LIST, TEMPLATE_CATEGORIES } from './TemplatePicker/TemplatePicker'
-export type { TemplateItem, TemplateCategory, TemplatePickerModalProps, TemplateSelectFieldProps } from './TemplatePicker/TemplatePicker'
+export type { TemplateItem, TemplateCategory, AgentGroup, TemplatePickerModalProps, TemplateSelectFieldProps } from './TemplatePicker/TemplatePicker'
 export type { MetricTilesProps, Metric } from './MetricTiles/MetricTiles.types'
 export type { TabsProps, Tab } from './Tabs/Tabs.types'
 export type { TabCountPillProps } from './Tabs/TabCountPill.types'

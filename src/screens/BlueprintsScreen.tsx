@@ -9,6 +9,7 @@ import {
   Icon,
   Link,
   Toast,
+  Tooltip,
   TopNav,
   type ColumnOption,
   type FilterField,
@@ -16,6 +17,7 @@ import {
   type SelectOption,
   type TemplateCategory,
   type TemplateItem,
+  type AgentGroup,
 } from '../components'
 import { BackArrowIcon } from '../assets/BackArrowIcon'
 
@@ -191,17 +193,19 @@ function ViewStatusAccordion({
               <span className="flex w-[140px] shrink-0 items-center gap-xs">
                 <DeployStatusChip status={status} />
                 {status === 'Failed' && (
-                  <button
-                    type="button"
-                    aria-label="Retry"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onRetry(business)
-                    }}
-                    className="flex size-7 shrink-0 items-center justify-center rounded-sm text-text-icon opacity-0 hover:bg-surface-l2 group-hover/row:opacity-100"
-                  >
-                    <Icon name="sync" size={16} />
-                  </button>
+                  <Tooltip content="Retry" variant="brief">
+                    <button
+                      type="button"
+                      aria-label="Retry"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onRetry(business)
+                      }}
+                      className="flex size-7 shrink-0 items-center justify-center rounded-sm text-text-icon opacity-0 hover:bg-surface-l2 group-hover/row:opacity-100"
+                    >
+                      <Icon name="sync" size={16} />
+                    </button>
+                  </Tooltip>
                 )}
               </span>
             </div>
@@ -222,17 +226,19 @@ function ViewStatusAccordion({
                           <span className="flex w-[140px] shrink-0 items-center gap-xs">
                             <DeployStatusChip status={featureStatus} />
                             {featureStatus === 'Failed' && (
-                              <button
-                                type="button"
-                                aria-label="Retry"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  onRetryFeature(business, feature)
-                                }}
-                                className="flex size-7 shrink-0 items-center justify-center rounded-sm text-text-icon opacity-0 hover:bg-surface-hover group-hover/feature:opacity-100"
-                              >
-                                <Icon name="sync" size={16} />
-                              </button>
+                              <Tooltip content="Retry" variant="brief">
+                                <button
+                                  type="button"
+                                  aria-label="Retry"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    onRetryFeature(business, feature)
+                                  }}
+                                  className="flex size-7 shrink-0 items-center justify-center rounded-sm text-text-icon opacity-0 hover:bg-surface-hover group-hover/feature:opacity-100"
+                                >
+                                  <Icon name="sync" size={16} />
+                                </button>
+                              </Tooltip>
                             )}
                           </span>
                         </div>
@@ -319,16 +325,23 @@ const AGENT_PREVIEWS: Record<string, string> = {
   'Review response - neutral': 'Responds to neutral reviews to acknowledge feedback and invite engagement.',
 }
 
-const AGENT_CATEGORIES: TemplateCategory[] = [
-  { id: 'listing-optimization', label: 'Listing optimization agents', count: LISTING_OPTIMIZATION_AGENTS.length },
-  { id: 'review-generation', label: 'Review generation agents', count: REVIEW_GENERATION_AGENTS.length },
-  { id: 'review-response', label: 'Review response agents', count: REVIEW_RESPONSE_AGENTS.length },
+// Sidebar (left list) = product. Each product's agents are further split into
+// grey-titled groups on the right (e.g. Reviews > Review generation agents > ...).
+const AGENT_PRODUCTS: TemplateCategory[] = [
+  { id: 'listings', label: 'Listings', count: LISTING_OPTIMIZATION_AGENTS.length },
+  { id: 'reviews', label: 'Reviews', count: REVIEW_GENERATION_AGENTS.length + REVIEW_RESPONSE_AGENTS.length },
+]
+
+const AGENT_GROUPS: AgentGroup[] = [
+  { id: 'listing-optimization', label: 'Listing optimization agents', categoryId: 'listings' },
+  { id: 'review-generation', label: 'Review generation agents', categoryId: 'reviews' },
+  { id: 'review-response', label: 'Review response agents', categoryId: 'reviews' },
 ]
 
 const AGENT_ITEMS: TemplateItem[] = [
-  ...LISTING_OPTIMIZATION_AGENTS.map((name) => ({ id: name, category: 'listing-optimization', title: name, preview: AGENT_PREVIEWS[name] ?? '' })),
-  ...REVIEW_GENERATION_AGENTS.map((name) => ({ id: name, category: 'review-generation', title: name, preview: AGENT_PREVIEWS[name] ?? '' })),
-  ...REVIEW_RESPONSE_AGENTS.map((name) => ({ id: name, category: 'review-response', title: name, preview: AGENT_PREVIEWS[name] ?? '' })),
+  ...LISTING_OPTIMIZATION_AGENTS.map((name) => ({ id: name, category: 'listings', group: 'listing-optimization', title: name, preview: AGENT_PREVIEWS[name] ?? '' })),
+  ...REVIEW_GENERATION_AGENTS.map((name) => ({ id: name, category: 'reviews', group: 'review-generation', title: name, preview: AGENT_PREVIEWS[name] ?? '' })),
+  ...REVIEW_RESPONSE_AGENTS.map((name) => ({ id: name, category: 'reviews', group: 'review-response', title: name, preview: AGENT_PREVIEWS[name] ?? '' })),
 ]
 
 const BUSINESS_NAME_POOL = [
@@ -1213,7 +1226,7 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
         fields={[
           { key: 'name', label: 'Name', type: 'text', placeholder: 'Example: Positive review agent package' },
           { key: 'sourceAccount', label: 'Source account', type: 'select', options: BUSINESS_SELECT_OPTIONS },
-          { key: 'agents', label: 'Agents', type: 'agent-modal', templateCategories: AGENT_CATEGORIES, templateItems: AGENT_ITEMS },
+          { key: 'agents', label: 'Agents', type: 'agent-modal', templateCategories: AGENT_PRODUCTS, templateGroups: AGENT_GROUPS, templateItems: AGENT_ITEMS },
           { key: 'emailTemplates', label: 'Email templates', type: 'template-modal', templateCategories: EMAIL_TEMPLATE_CATEGORIES, templateItems: EMAIL_TEMPLATE_ITEMS },
           { key: 'textTemplates', label: 'Text templates', type: 'template-modal', templateCategories: TEXT_TEMPLATE_CATEGORIES, templateItems: TEXT_TEMPLATE_ITEMS },
         ]}

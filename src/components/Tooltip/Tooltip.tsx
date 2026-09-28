@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { TooltipProps } from './Tooltip.types'
 
 const VARIANT_MAX_WIDTH = {
@@ -76,7 +77,7 @@ export function Tooltip({
       onMouseLeave={scheduleHide}
     >
       {children}
-      {visible && pos && (
+      {visible && pos && createPortal(
         <span
           ref={panelRef}
           role="tooltip"
@@ -88,7 +89,8 @@ export function Tooltip({
           onMouseLeave={interactive ? scheduleHide : undefined}
         >
           {content}
-        </span>
+        </span>,
+        document.body
       )}
     </span>
   )

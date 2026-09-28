@@ -1,5 +1,5 @@
 import type { SelectOption } from '../SelectMenu/SelectMenu.types'
-import type { TemplateCategory, TemplateItem } from '../TemplatePicker/TemplatePicker'
+import type { AgentGroup, TemplateCategory, TemplateItem } from '../TemplatePicker/TemplatePicker'
 
 export type FormFieldType = 'text' | 'select' | 'template-picker' | 'template-modal' | 'agent-modal' | 'textarea'
 
@@ -24,6 +24,8 @@ export interface FormField {
   templateCategories?: TemplateCategory[]
   /** Items for template-modal/agent-modal fields. Value is stored as a comma-joined list of item ids. */
   templateItems?: TemplateItem[]
+  /** Agent groups for agent-modal fields — rendered as grey section titles under the active product. */
+  templateGroups?: AgentGroup[]
   /** Max character count for textarea fields. */
   charLimit?: number
 }

@@ -9,6 +9,8 @@ export interface TemplateItem {
   category: string
   title: string
   preview: string
+  /** Agent group this item belongs to (agent pickers only) — see `AgentGroup`. */
+  group?: string
 }
 
 export interface TemplateCategory {
@@ -18,6 +20,14 @@ export interface TemplateCategory {
   disabled?: boolean
   /** Still selectable/active by default, but not rendered in the sidebar list. */
   hidden?: boolean
+}
+
+/** Grey section header grouping items within a product/category (agent pickers only). */
+export interface AgentGroup {
+  id: string
+  label: string
+  /** `TemplateCategory.id` this group is shown under. */
+  categoryId: string
 }
 
 export const TEMPLATE_CATEGORIES: TemplateCategory[] = [
@@ -53,6 +63,51 @@ function TemplateThumbnail() {
   )
 }
 
+// ─── Item row (checkbox + optional thumbnail) ─────────────────────────────────
+
+function TemplateRow({
+  item,
+  selected,
+  onToggle,
+  showThumbnail,
+}: {
+  item: TemplateItem
+  selected: boolean
+  onToggle: (id: string) => void
+  showThumbnail: boolean
+}) {
+  return (
+    <div
+      onClick={() => onToggle(item.id)}
+      className={`mb-xs flex cursor-pointer items-start gap-md rounded-sm border p-sm transition-colors ${
+        selected ? 'border-primary bg-[#f0f6ff]' : 'border-transparent hover:bg-surface-hover'
+      }`}
+    >
+      <input
+        type="checkbox"
+        checked={selected}
+        onChange={() => onToggle(item.id)}
+        onClick={(e) => e.stopPropagation()}
+        className="mt-xs shrink-0 accent-primary"
+      />
+      {showThumbnail && <TemplateThumbnail />}
+      <div className="min-w-0 flex-1">
+        <div className="mb-xs text-body text-text-primary">{item.title}</div>
+        <div className="text-small text-text-secondary line-clamp-2">{item.preview}</div>
+      </div>
+      {showThumbnail && (
+        <button
+          type="button"
+          onClick={(e) => e.stopPropagation()}
+          className="shrink-0 text-text-icon hover:text-text-primary"
+        >
+          <Icon name="visibility" size={18} />
+        </button>
+      )}
+    </div>
+  )
+}
+
 // ─── Modal ────────────────────────────────────────────────────────────────────
 
 export interface TemplatePickerModalProps {
@@ -69,6 +124,10 @@ export interface TemplatePickerModalProps {
   infoText?: string
   /** Set false for pickers whose items have no visual preview (e.g. agents) — hides the thumbnail and the eye icon. */
   showThumbnail?: boolean
+  /** Sub-groups shown as grey section titles on the right (agent pickers only) — `categories` act as the product-level sidebar. */
+  groups?: AgentGroup[]
+  /** Set false to hide the item count/chevron next to each sidebar entry (agent pickers only — sidebar shows products, not counts). */
+  showCategoryMeta?: boolean
 }
 
 export function TemplatePickerModal({
@@ -81,6 +140,8 @@ export function TemplatePickerModal({
   headerLabel = 'Template',
   infoText = 'Select a template to pre-fill the message. You can edit it before sending.',
   showThumbnail = true,
+  groups,
+  showCategoryMeta = true,
 }: TemplatePickerModalProps) {
   const [activeCategory, setActiveCategory] = useState(categories.find((c) => !c.disabled)?.id ?? categories[0]?.id)
   const [search, setSearch] = useState('')
@@ -171,48 +232,45 @@ export function TemplatePickerModal({
                 }`}
               >
                 <span>{cat.label}</span>
-                {cat.count > 0 && (
+                {showCategoryMeta && cat.count > 0 && (
                   <span className="text-small text-text-tertiary">{cat.count} ›</span>
                 )}
               </button>
             ))}
           </div>
 
-          {/* Template list */}
+          {/* Template/agent list */}
           <div className="flex-1 overflow-y-auto p-sm">
-            {filtered.map((tpl) => (
-              <div
-                key={tpl.id}
-                onClick={() => toggle(tpl.id)}
-                className={`mb-xs flex cursor-pointer items-start gap-md rounded-sm border p-sm transition-colors ${
-                  selected.has(tpl.id)
-                    ? 'border-primary bg-[#f0f6ff]'
-                    : 'border-transparent hover:bg-surface-hover'
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  checked={selected.has(tpl.id)}
-                  onChange={() => toggle(tpl.id)}
-                  onClick={(e) => e.stopPropagation()}
-                  className="mt-xs shrink-0 accent-primary"
-                />
-                {showThumbnail && <TemplateThumbnail />}
-                <div className="min-w-0 flex-1">
-                  <div className="mb-xs text-body text-text-primary">{tpl.title}</div>
-                  <div className="text-small text-text-secondary line-clamp-2">{tpl.preview}</div>
-                </div>
-                {showThumbnail && (
-                  <button
-                    type="button"
-                    onClick={(e) => e.stopPropagation()}
-                    className="shrink-0 text-text-icon hover:text-text-primary"
-                  >
-                    <Icon name="visibility" size={18} />
-                  </button>
-                )}
-              </div>
-            ))}
+            {groups
+              ? groups
+                  .filter((g) => g.categoryId === activeCategory)
+                  .map((group) => {
+                    const groupItems = filtered.filter((tpl) => tpl.group === group.id)
+                    if (groupItems.length === 0) return null
+                    return (
+                      <div key={group.id} className="mb-md">
+                        <p className="mb-xs px-sm text-small text-text-tertiary">{group.label}</p>
+                        {groupItems.map((tpl) => (
+                          <TemplateRow
+                            key={tpl.id}
+                            item={tpl}
+                            selected={selected.has(tpl.id)}
+                            onToggle={toggle}
+                            showThumbnail={showThumbnail}
+                          />
+                        ))}
+                      </div>
+                    )
+                  })
+              : filtered.map((tpl) => (
+                  <TemplateRow
+                    key={tpl.id}
+                    item={tpl}
+                    selected={selected.has(tpl.id)}
+                    onToggle={toggle}
+                    showThumbnail={showThumbnail}
+                  />
+                ))}
             {filtered.length === 0 && (
               <div className="py-2xl text-center text-body text-text-secondary">
                 No templates found
