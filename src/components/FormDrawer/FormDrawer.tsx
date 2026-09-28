@@ -40,6 +40,11 @@ export function FormDrawer({
     return values[key] ? values[key].split(',').filter(Boolean) : []
   }
 
+  function multiSelectLabel(key: string): string {
+    const n = getMultiValues(key).length
+    return n > 0 ? `${n} selected` : ''
+  }
+
   function openMenu(key: string, e: React.MouseEvent<HTMLButtonElement>) {
     if (openField === key) {
       setOpenField(null)
@@ -55,7 +60,7 @@ export function FormDrawer({
   const activeField = fields.find((f) => f.key === openField && (f.type === 'select' || f.type === 'template-picker'))
   const activeTemplateField = activeField?.type === 'template-picker' ? activeField : null
   const activeSelectField = activeField?.type === 'select' ? activeField : null
-  const activeModalField = fields.find((f) => f.key === openField && f.type === 'template-modal')
+  const activeModalField = fields.find((f) => f.key === openField && (f.type === 'template-modal' || f.type === 'agent-modal'))
 
   return (
     <div className={`fixed inset-0 z-[100] ${open ? '' : 'pointer-events-none'}`} aria-hidden={!open}>
@@ -115,14 +120,10 @@ export function FormDrawer({
             const displayValue =
               field.type === 'select'
                 ? field.multi
-                  ? getMultiValues(field.key)
-                      .map((v) => toSelectOptions(field.options).find((o) => o.value === v)?.label ?? v)
-                      .join(', ')
+                  ? multiSelectLabel(field.key)
                   : toSelectOptions(field.options).find((o) => o.value === value)?.label ?? value
-                : field.type === 'template-modal'
-                  ? getMultiValues(field.key)
-                      .map((v) => (field.templateItems ?? []).find((t) => t.id === v)?.title ?? v)
-                      .join(', ')
+                : field.type === 'template-modal' || field.type === 'agent-modal'
+                  ? multiSelectLabel(field.key)
                   : value
             return (
               <div key={field.key} className="flex flex-col gap-xs">
@@ -266,14 +267,17 @@ export function FormDrawer({
         </>
       )}
 
-      {/* Template picker modal — centered, no backdrop of its own (the drawer already dims the page) */}
+      {/* Template/agent picker modal — centered, no backdrop of its own (the drawer already dims the page) */}
       {activeModalField && (
         <TemplatePickerModal
           isOpen
           categories={activeModalField.templateCategories}
           items={activeModalField.templateItems}
           initialSelected={getMultiValues(activeModalField.key)}
-          enableAiTab
+          enableAiTab={activeModalField.type === 'template-modal'}
+          headerLabel={activeModalField.type === 'agent-modal' ? 'Agents' : undefined}
+          infoText={activeModalField.type === 'agent-modal' ? 'Select the agents to include in this package.' : undefined}
+          showThumbnail={activeModalField.type !== 'agent-modal'}
           onClose={() => setOpenField(null)}
           onSelect={(ids) => {
             setValues((v) => ({ ...v, [activeModalField.key]: ids.join(',') }))

@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Chip } from '../Chip/Chip'
 import { Icon } from '../Icon/Icon'
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
@@ -17,6 +16,8 @@ export interface TemplateCategory {
   label: string
   count: number
   disabled?: boolean
+  /** Still selectable/active by default, but not rendered in the sidebar list. */
+  hidden?: boolean
 }
 
 export const TEMPLATE_CATEGORIES: TemplateCategory[] = [
@@ -63,6 +64,11 @@ export interface TemplatePickerModalProps {
   items?: TemplateItem[]
   /** Show the "Templates" / "Templates AI" tab row (with the A/B-testing banner on the AI tab). */
   enableAiTab?: boolean
+  /** Header title and info-bar copy — override for non-template pickers (e.g. agents). */
+  headerLabel?: string
+  infoText?: string
+  /** Set false for pickers whose items have no visual preview (e.g. agents) — hides the thumbnail and the eye icon. */
+  showThumbnail?: boolean
 }
 
 export function TemplatePickerModal({
@@ -72,9 +78,10 @@ export function TemplatePickerModal({
   initialSelected = [],
   categories = TEMPLATE_CATEGORIES,
   items = TEMPLATE_LIST,
-  enableAiTab = false,
+  headerLabel = 'Template',
+  infoText = 'Select a template to pre-fill the message. You can edit it before sending.',
+  showThumbnail = true,
 }: TemplatePickerModalProps) {
-  const [mainTab, setMainTab] = useState<'templates' | 'templatesAI'>('templates')
   const [activeCategory, setActiveCategory] = useState(categories.find((c) => !c.disabled)?.id ?? categories[0]?.id)
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<Set<string>>(new Set(initialSelected))
@@ -82,7 +89,6 @@ export function TemplatePickerModal({
   useEffect(() => {
     if (isOpen) {
       setSelected(new Set(initialSelected))
-      setMainTab('templates')
       setActiveCategory(categories.find((c) => !c.disabled)?.id ?? categories[0]?.id)
       setSearch('')
     }
@@ -112,18 +118,12 @@ export function TemplatePickerModal({
       onClick={onClose}
     >
       <div
-        className="relative flex max-h-[80vh] w-[720px] max-w-[95vw] flex-col overflow-hidden rounded-md bg-surface shadow-modal"
+        className="relative flex h-[640px] max-h-[80vh] w-[720px] max-w-[95vw] flex-col overflow-hidden rounded-md bg-surface shadow-modal"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center px-md py-sm">
-          <button
-            type="button"
-            className="mr-auto flex items-center gap-xs text-body text-text-action hover:underline"
-          >
-            Create template
-            <Icon name="open_in_new" size={14} />
-          </button>
+          <span className="mr-auto text-body text-text-primary">{headerLabel}</span>
           <button
             type="button"
             onClick={onClose}
@@ -133,31 +133,10 @@ export function TemplatePickerModal({
           </button>
         </div>
 
-        {enableAiTab && (
-          <div className="flex items-end gap-lg border-t border-border px-md">
-            {(['templates', 'templatesAI'] as const).map((tab) => {
-              const active = tab === mainTab
-              return (
-                <button key={tab} type="button" onClick={() => setMainTab(tab)} className="flex flex-col items-stretch">
-                  <span className={`flex items-center gap-xs px-sm py-sm text-body ${active ? 'text-text-primary' : 'text-text-secondary'}`}>
-                    {tab === 'templates' ? 'Templates' : 'Templates AI'}
-                    {tab === 'templatesAI' && <Chip label="New" variant="success" />}
-                  </span>
-                  <span className={`h-[2px] w-full ${active ? 'bg-primary' : 'bg-transparent'}`} />
-                </button>
-              )
-            })}
-          </div>
-        )}
-
         {/* Info bar */}
         <div className="flex items-center gap-sm border-t border-border bg-[#e8f4fd] px-md py-sm">
           <Icon name="info" size={16} className="shrink-0 text-[#1976d2]" />
-          <span className="text-small text-text-primary">
-            {enableAiTab && mainTab === 'templatesAI'
-              ? 'Select multiple templates of the same type for A/B testing. Deselect all to test templates of a different type.'
-              : 'Select a template to pre-fill the message. You can edit it before sending.'}
-          </span>
+          <span className="text-small text-text-primary">{infoText}</span>
         </div>
 
         {/* Search */}
@@ -177,7 +156,7 @@ export function TemplatePickerModal({
         <div className="flex min-h-0 flex-1 overflow-hidden">
           {/* Sidebar */}
           <div className="w-[190px] shrink-0 overflow-y-auto border-r border-border pt-xs">
-            {categories.map((cat) => (
+            {categories.filter((cat) => !cat.hidden).map((cat) => (
               <button
                 key={cat.id}
                 type="button"
@@ -218,18 +197,20 @@ export function TemplatePickerModal({
                   onClick={(e) => e.stopPropagation()}
                   className="mt-xs shrink-0 accent-primary"
                 />
-                <TemplateThumbnail />
+                {showThumbnail && <TemplateThumbnail />}
                 <div className="min-w-0 flex-1">
                   <div className="mb-xs text-body text-text-primary">{tpl.title}</div>
                   <div className="text-small text-text-secondary line-clamp-2">{tpl.preview}</div>
                 </div>
-                <button
-                  type="button"
-                  onClick={(e) => e.stopPropagation()}
-                  className="shrink-0 text-text-icon hover:text-text-primary"
-                >
-                  <Icon name="visibility" size={18} />
-                </button>
+                {showThumbnail && (
+                  <button
+                    type="button"
+                    onClick={(e) => e.stopPropagation()}
+                    className="shrink-0 text-text-icon hover:text-text-primary"
+                  >
+                    <Icon name="visibility" size={18} />
+                  </button>
+                )}
               </div>
             ))}
             {filtered.length === 0 && (

@@ -19,13 +19,20 @@ import {
 } from '../components'
 import { BackArrowIcon } from '../assets/BackArrowIcon'
 
-type BlueprintStatus = 'Completed' | 'Draft' | 'Syncing'
+type BlueprintStatus =
+  | 'Package being created'
+  | 'Package creation failed'
+  | 'Package ready to deploy'
+  | 'Package deployment in progress'
+  | 'Package deployed'
+  | 'Package partially deployed'
 
 interface FeatureGroups {
   listingOptimizationAgents: string[]
   reviewGenerationAgents: string[]
   reviewResponseAgents: string[]
-  templates: string[]
+  emailTemplates: string[]
+  textTemplates: string[]
 }
 
 type BusinessDeployStatus = 'Completed' | 'In progress' | 'Failed'
@@ -54,7 +61,8 @@ function getFeatureSections(featureGroups: FeatureGroups): FeatureSection[] {
     { label: 'Listing optimization agents', items: featureGroups.listingOptimizationAgents },
     { label: 'Review generation agents', items: featureGroups.reviewGenerationAgents },
     { label: 'Review response agents', items: featureGroups.reviewResponseAgents },
-    { label: 'Templates', items: featureGroups.templates },
+    { label: 'Email templates', items: featureGroups.emailTemplates },
+    { label: 'Text templates', items: featureGroups.textTemplates },
   ].filter((s) => s.items.length > 0)
 }
 
@@ -69,8 +77,10 @@ const FEATURE_SECTION_NOTES: Record<string, string> = {
     'This agent will be created for each selected business. If an agent with the same name already exists, a copy will be created with "- Copy" appended to the name.',
   'Review response agents':
     'This agent will be created for each selected business. If an agent with the same name already exists, a copy will be created with "- Copy" appended to the name.',
-  Templates:
-    'This template will be created for each selected business. If a template with the same name already exists, a copy will be created with "- Copy" appended to the template name. If no template with the same name exists, the template will be created with the exact same name.',
+  'Email templates':
+    'This email template will be created for each selected business. If a template with the same name already exists, a copy will be created with "- Copy" appended to the template name. If no template with the same name exists, the template will be created with the exact same name.',
+  'Text templates':
+    'This text template will be created for each selected business. If a template with the same name already exists, a copy will be created with "- Copy" appended to the template name. If no template with the same name exists, the template will be created with the exact same name.',
 }
 
 const FEATURE_ITEM_NOTES: Record<string, string> = {
@@ -145,7 +155,7 @@ function ViewStatusAccordion({
   const businesses = Object.keys(row.businessStatuses).sort((a, b) =>
     parseBusinessLabel(a).title.localeCompare(parseBusinessLabel(b).title),
   )
-  const features = flattenFeatures(row.featureGroups)
+  const sections = getFeatureSections(row.featureGroups)
 
   return (
     <div>
@@ -197,35 +207,39 @@ function ViewStatusAccordion({
             </div>
             {expanded && (
               <div className="bg-surface-l2 pl-[42px] pr-md">
-                {features.map((feature, fi) => {
-                  const featureStatus = row.businessFeatureStatuses[business]?.[feature] ?? status
-                  return (
-                    <div
-                      key={feature}
-                      className={`group/feature flex items-center py-sm ${
-                        fi < features.length - 1 ? 'border-b border-border' : ''
-                      }`}
-                    >
-                      <span className="min-w-0 flex-1 truncate text-body text-text-primary">{feature}</span>
-                      <span className="flex w-[140px] shrink-0 items-center gap-xs">
-                        <DeployStatusChip status={featureStatus} />
-                        {featureStatus === 'Failed' && (
-                          <button
-                            type="button"
-                            aria-label="Retry"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              onRetryFeature(business, feature)
-                            }}
-                            className="flex size-7 shrink-0 items-center justify-center rounded-sm text-text-icon opacity-0 hover:bg-surface-hover group-hover/feature:opacity-100"
-                          >
-                            <Icon name="sync" size={16} />
-                          </button>
-                        )}
-                      </span>
-                    </div>
-                  )
-                })}
+                {sections.map((section, si) => (
+                  <div key={section.label}>
+                    <p className="pt-sm pb-xs text-small text-text-tertiary">{section.label}</p>
+                    {section.items.map((feature, fi) => {
+                      const featureStatus = row.businessFeatureStatuses[business]?.[feature] ?? status
+                      const isLast = si === sections.length - 1 && fi === section.items.length - 1
+                      return (
+                        <div
+                          key={feature}
+                          className={`group/feature flex items-center py-sm ${isLast ? '' : 'border-b border-border'}`}
+                        >
+                          <span className="min-w-0 flex-1 truncate text-body text-text-primary">{feature}</span>
+                          <span className="flex w-[140px] shrink-0 items-center gap-xs">
+                            <DeployStatusChip status={featureStatus} />
+                            {featureStatus === 'Failed' && (
+                              <button
+                                type="button"
+                                aria-label="Retry"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  onRetryFeature(business, feature)
+                                }}
+                                className="flex size-7 shrink-0 items-center justify-center rounded-sm text-text-icon opacity-0 hover:bg-surface-hover group-hover/feature:opacity-100"
+                              >
+                                <Icon name="sync" size={16} />
+                              </button>
+                            )}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -239,13 +253,18 @@ const LISTING_OPTIMIZATION_AGENTS = ['Listing Health Optimizer', 'Optimization 2
 const REVIEW_GENERATION_AGENTS = ['Post-Visit Review Generator', 'Generation - follow-up', 'Generation - reminder']
 const REVIEW_RESPONSE_AGENTS = ['AI Review Responder', 'Review response - negative', 'Review response - neutral']
 
-const TEMPLATE_NAMES = [
+const EMAIL_TEMPLATE_NAMES = [
   'Post-Visit Review Request',
-  'Review response template',
   'Thank you template',
   'Listing update template',
+]
+
+const TEXT_TEMPLATE_NAMES = [
+  'Review response template',
   'Escalation template',
 ]
+
+const TEMPLATE_NAMES = [...EMAIL_TEMPLATE_NAMES, ...TEXT_TEMPLATE_NAMES]
 
 const TEMPLATE_PREVIEWS: Record<string, string> = {
   'Post-Visit Review Request': 'Hi [Customer Name], thanks for visiting [Business Name]. Mind leaving us a quick review? It really helps.',
@@ -255,22 +274,62 @@ const TEMPLATE_PREVIEWS: Record<string, string> = {
   'Escalation template': "Hi [Customer Name], we're sorry to hear about your experience. A member of our team will reach out shortly to make it right.",
 }
 
-const TEMPLATE_CATEGORIES: TemplateCategory[] = [
-  { id: 'reviews', label: 'Reviews', count: TEMPLATE_NAMES.length },
+const DISABLED_TEMPLATE_CATEGORIES: TemplateCategory[] = [
   { id: 'referrals', label: 'Referrals', count: 120, disabled: true },
   { id: 'surveys', label: 'Surveys', count: 120, disabled: true },
   { id: 'cx', label: 'Customer experience', count: 100, disabled: true },
   { id: 'custom', label: 'Custom', count: 100, disabled: true },
 ]
 
-const TEMPLATE_ITEMS: TemplateItem[] = TEMPLATE_NAMES.map((name) => ({
+const EMAIL_TEMPLATE_CATEGORIES: TemplateCategory[] = [
+  { id: 'email', label: 'Email templates', count: EMAIL_TEMPLATE_NAMES.length, hidden: true },
+  ...DISABLED_TEMPLATE_CATEGORIES,
+]
+
+const TEXT_TEMPLATE_CATEGORIES: TemplateCategory[] = [
+  { id: 'text', label: 'Text templates', count: TEXT_TEMPLATE_NAMES.length, hidden: true },
+  ...DISABLED_TEMPLATE_CATEGORIES,
+]
+
+const EMAIL_TEMPLATE_ITEMS: TemplateItem[] = EMAIL_TEMPLATE_NAMES.map((name) => ({
   id: name,
-  category: 'reviews',
+  category: 'email',
+  title: name,
+  preview: TEMPLATE_PREVIEWS[name] ?? '',
+}))
+
+const TEXT_TEMPLATE_ITEMS: TemplateItem[] = TEXT_TEMPLATE_NAMES.map((name) => ({
+  id: name,
+  category: 'text',
   title: name,
   preview: TEMPLATE_PREVIEWS[name] ?? '',
 }))
 
 const ALL_AGENT_NAMES = [...LISTING_OPTIMIZATION_AGENTS, ...REVIEW_GENERATION_AGENTS, ...REVIEW_RESPONSE_AGENTS]
+
+const AGENT_PREVIEWS: Record<string, string> = {
+  'Listing Health Optimizer': 'Monitors business listings and keeps details accurate and up to date.',
+  'Optimization 2': 'Optimizes listing content to improve visibility across search and directories.',
+  'Optimization 3': 'Automates additional listing optimization tasks for this package.',
+  'Post-Visit Review Generator': 'Sends review requests to customers after a completed visit.',
+  'Generation - follow-up': "Follows up with customers who haven't yet left a review.",
+  'Generation - reminder': 'Sends reminder messages to prompt customers to leave a review.',
+  'AI Review Responder': 'Automatically drafts and sends responses to new customer reviews.',
+  'Review response - negative': 'Responds to negative reviews with an empathetic, on-brand reply.',
+  'Review response - neutral': 'Responds to neutral reviews to acknowledge feedback and invite engagement.',
+}
+
+const AGENT_CATEGORIES: TemplateCategory[] = [
+  { id: 'listing-optimization', label: 'Listing optimization agents', count: LISTING_OPTIMIZATION_AGENTS.length },
+  { id: 'review-generation', label: 'Review generation agents', count: REVIEW_GENERATION_AGENTS.length },
+  { id: 'review-response', label: 'Review response agents', count: REVIEW_RESPONSE_AGENTS.length },
+]
+
+const AGENT_ITEMS: TemplateItem[] = [
+  ...LISTING_OPTIMIZATION_AGENTS.map((name) => ({ id: name, category: 'listing-optimization', title: name, preview: AGENT_PREVIEWS[name] ?? '' })),
+  ...REVIEW_GENERATION_AGENTS.map((name) => ({ id: name, category: 'review-generation', title: name, preview: AGENT_PREVIEWS[name] ?? '' })),
+  ...REVIEW_RESPONSE_AGENTS.map((name) => ({ id: name, category: 'review-response', title: name, preview: AGENT_PREVIEWS[name] ?? '' })),
+]
 
 const BUSINESS_NAME_POOL = [
   'Bright Smiles Dental', 'Pearl White Dentistry', 'Gentle Care Dental', 'Smile Studio', 'Crown Dental Group',
@@ -283,6 +342,20 @@ const BUSINESS_NAME_POOL = [
 
 const BUSINESS_NAMES = BUSINESS_NAME_POOL.map((name, i) => `${100000000000000 + i} ${name}`)
 
+interface BusinessGroup {
+  id: string
+  label: string
+  businessNames: string[]
+}
+
+const BUSINESS_GROUPS: BusinessGroup[] = (() => {
+  const groupLabels = ['Premier Dental Network', 'Coastal Health Alliance', 'Metro Care Collective', 'Heritage Practice Group', 'Summit Family Partners', 'Vanguard Wellness Network']
+  const size = Math.ceil(BUSINESS_NAMES.length / groupLabels.length)
+  return groupLabels
+    .map((label, i) => ({ id: label, label, businessNames: BUSINESS_NAMES.slice(i * size, (i + 1) * size) }))
+    .filter((g) => g.businessNames.length > 0)
+})()
+
 function take<T>(pool: T[], count: number, offset: number): T[] {
   return Array.from({ length: count }, (_, i) => pool[(offset + i) % pool.length])
 }
@@ -291,7 +364,7 @@ function buildRow(
   name: string,
   lastUpdatedBy: string,
   status: BlueprintStatus,
-  counts: { listing: number; generation: number; response: number; templates: number },
+  counts: { listing: number; generation: number; response: number; emailTemplates: number; textTemplates: number },
   businesses: number,
   sourceAccount: string,
   updatedOn: string,
@@ -301,13 +374,15 @@ function buildRow(
     listingOptimizationAgents: take(LISTING_OPTIMIZATION_AGENTS, counts.listing, offset),
     reviewGenerationAgents: take(REVIEW_GENERATION_AGENTS, counts.generation, offset),
     reviewResponseAgents: take(REVIEW_RESPONSE_AGENTS, counts.response, offset),
-    templates: take(TEMPLATE_NAMES, counts.templates, offset),
+    emailTemplates: take(EMAIL_TEMPLATE_NAMES, counts.emailTemplates, offset),
+    textTemplates: take(TEXT_TEMPLATE_NAMES, counts.textTemplates, offset),
   }
   const features =
     featureGroups.listingOptimizationAgents.length +
     featureGroups.reviewGenerationAgents.length +
     featureGroups.reviewResponseAgents.length +
-    featureGroups.templates.length
+    featureGroups.emailTemplates.length +
+    featureGroups.textTemplates.length
   const businessNames = take(BUSINESS_NAMES, businesses, offset)
   const { statuses, featureStatuses } = generateBusinessStatuses(businessNames, flattenFeatures(featureGroups))
   return {
@@ -326,11 +401,13 @@ function buildRow(
 }
 
 const INITIAL_DATA: BlueprintRow[] = [
-  buildRow('Review Management Essentials', 'Adam', 'Completed', { listing: 1, generation: 1, response: 1, templates: 1 }, 20, 'Lakeside Autogroup', 'Sep 10, 2026', 0),
-  buildRow('Customer Engagement Pack', 'Adam', 'Completed', { listing: 1, generation: 1, response: 1, templates: 2 }, 10, 'Lakeside Autogroup', 'Sep 04, 2026', 1),
-  buildRow('Reputation Growth Setup', 'Adam', 'Draft', { listing: 1, generation: 2, response: 1, templates: 1 }, 30, 'Lakeside Autogroup', 'Sep 01, 2026', 2),
-  buildRow('Social & Reviews Starter', 'Adam', 'Syncing', { listing: 1, generation: 1, response: 2, templates: 1 }, 10, 'Lakeside Autogroup', 'Oct 20, 2026', 3),
-  buildRow('Complete Reputation Automation', 'Adam', 'Completed', { listing: 2, generation: 1, response: 1, templates: 2 }, 30, 'Lakeside Autogroup', 'Oct 15, 2026', 4),
+  buildRow('Review Management Essentials', 'Adam', 'Package deployed', { listing: 1, generation: 1, response: 1, emailTemplates: 1, textTemplates: 0 }, 20, 'Lakeside Autogroup', 'Sep 10, 2026', 0),
+  buildRow('Customer Engagement Pack', 'Adam', 'Package being created', { listing: 1, generation: 1, response: 1, emailTemplates: 1, textTemplates: 1 }, 10, 'Lakeside Autogroup', 'Sep 04, 2026', 1),
+  buildRow('Reputation Growth Setup', 'Adam', 'Package ready to deploy', { listing: 1, generation: 2, response: 1, emailTemplates: 1, textTemplates: 0 }, 0, 'Lakeside Autogroup', 'Sep 01, 2026', 2),
+  buildRow('Social & Reviews Starter', 'Adam', 'Package deployment in progress', { listing: 1, generation: 1, response: 2, emailTemplates: 0, textTemplates: 1 }, 10, 'Lakeside Autogroup', 'Oct 20, 2026', 3),
+  buildRow('Complete Reputation Automation', 'Adam', 'Package partially deployed', { listing: 2, generation: 1, response: 1, emailTemplates: 1, textTemplates: 1 }, 15, 'Lakeside Autogroup', 'Oct 15, 2026', 4),
+  buildRow('Loyalty & VIP Program', 'Adam', 'Package creation failed', { listing: 1, generation: 1, response: 1, emailTemplates: 0, textTemplates: 0 }, 0, 'Lakeside Autogroup', 'Oct 22, 2026', 5),
+  buildRow('Service Reminder Suite', 'Adam', 'Package deployed', { listing: 1, generation: 1, response: 1, emailTemplates: 1, textTemplates: 1 }, 30, 'Lakeside Autogroup', 'Sep 18, 2026', 6),
 ]
 
 const FILTER_FIELDS: FilterField[] = [
@@ -347,12 +424,6 @@ const BUSINESS_SELECT_OPTIONS: SelectOption[] = BUSINESS_NAMES.map((name) => {
   const { title, code } = parseBusinessLabel(name)
   return { value: name, label: title, subLabel: code }
 })
-
-const AGENT_SELECT_OPTIONS: SelectOption[] = [
-  ...LISTING_OPTIMIZATION_AGENTS.map((name) => ({ value: name, label: name, group: 'Listing optimization agents' })),
-  ...REVIEW_GENERATION_AGENTS.map((name) => ({ value: name, label: name, group: 'Review generation agents' })),
-  ...REVIEW_RESPONSE_AGENTS.map((name) => ({ value: name, label: name, group: 'Review response agents' })),
-]
 
 function parseBusinessLabel(name: string): { title: string; code: string } {
   const match = name.match(/^(\S+)\s+(.*)$/)
@@ -406,12 +477,13 @@ interface CellMenuState {
 interface ColumnDef {
   key: string
   label: string
+  width?: number
   sortable?: boolean
   locked?: boolean
   render?: (value: unknown, row: unknown) => ReactNode
 }
 
-const DEFAULT_COLUMN_ORDER = ['name', 'updatedOn', 'sourceAccount', 'features', 'businesses']
+const DEFAULT_COLUMN_ORDER = ['name', 'updatedOn', 'sourceAccount', 'features', 'businesses', 'status']
 
 interface BlueprintsScreenProps {
   onBack: () => void
@@ -433,6 +505,8 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
   const [deployStep, setDeployStep] = useState<'select' | 'note'>('select')
   const [deploySelected, setDeploySelected] = useState<string[]>([])
   const [deploySearch, setDeploySearch] = useState('')
+  const [deployViewMode, setDeployViewMode] = useState<'businesses' | 'group'>('businesses')
+  const [viewByMenuOpen, setViewByMenuOpen] = useState(false)
   const [expandedNoteItems, setExpandedNoteItems] = useState<string[]>([])
   const [viewStatusRowName, setViewStatusRowName] = useState<string | null>(null)
   const [expandedStatusBusiness, setExpandedStatusBusiness] = useState<string | null>(null)
@@ -462,6 +536,8 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
       setDeployStep('select')
       setDeployConfirmOpen(false)
       setExpandedNoteItems([])
+      setDeployViewMode('businesses')
+      setViewByMenuOpen(false)
     }
   }, [deployRow])
 
@@ -481,6 +557,7 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
     {
       key: 'name',
       label: 'Name',
+      width: 260,
       sortable: true,
       locked: true,
       render: (_: unknown, row: unknown) => {
@@ -501,11 +578,12 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
         )
       },
     },
-    { key: 'updatedOn', label: 'Updated on', sortable: true },
-    { key: 'sourceAccount', label: 'Source account', sortable: true },
+    { key: 'updatedOn', label: 'Updated on', width: 140, sortable: true },
+    { key: 'sourceAccount', label: 'Source account', width: 180, sortable: true },
     {
       key: 'features',
       label: 'Features',
+      width: 90,
       sortable: true,
       render: (_: unknown, row: unknown) => {
         const r = row as BlueprintRow
@@ -526,6 +604,7 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
     {
       key: 'businesses',
       label: 'Businesses',
+      width: 90,
       sortable: true,
       render: (_: unknown, row: unknown) => {
         const r = row as BlueprintRow
@@ -541,6 +620,16 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
             }
           />
         )
+      },
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      width: 240,
+      sortable: true,
+      render: (_: unknown, row: unknown) => {
+        const r = row as BlueprintRow
+        return <span className="text-body text-text-primary">{r.status}</span>
       },
     },
   ]
@@ -562,17 +651,37 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
       onClick: (row) => setDeployRowName((row as unknown as BlueprintRow).name),
       disabled: (row) => {
         const r = row as unknown as BlueprintRow
-        return r.status === 'Syncing' || r.businessNames.length >= BUSINESS_NAMES.length
+        return (
+          r.status === 'Package being created' ||
+          r.status === 'Package creation failed' ||
+          r.status === 'Package deployment in progress' ||
+          r.businessNames.length >= BUSINESS_NAMES.length
+        )
       },
       description: (row) => {
         const r = row as unknown as BlueprintRow
-        return r.status === 'Syncing' ? 'Creating managed package..' : 'No new business'
+        if (r.status === 'Package being created') return 'Package is still being created'
+        if (r.status === 'Package creation failed') return 'Package creation failed'
+        if (r.status === 'Package deployment in progress') return 'Deployment in progress'
+        return 'No new business'
       },
+    },
+    {
+      label: 'Retry',
+      onClick: (row) => retryPackageCreation((row as unknown as BlueprintRow).name),
+      visible: (row) => (row as unknown as BlueprintRow).status === 'Package creation failed',
     },
     {
       label: 'View status',
       onClick: (row) => setViewStatusRowName((row as unknown as BlueprintRow).name),
-      visible: (row) => (row as unknown as BlueprintRow).status !== 'Draft',
+      visible: (row) => {
+        const status = (row as unknown as BlueprintRow).status
+        return (
+          status === 'Package deployment in progress' ||
+          status === 'Package deployed' ||
+          status === 'Package partially deployed'
+        )
+      },
     },
     {
       label: 'Delete',
@@ -611,7 +720,7 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
         if (!source) return prev
         const copyName = `${source.name} copy`
         return [
-          { ...source, name: copyName, status: 'Draft', updatedOn: today(), businesses: 0, businessNames: [], businessStatuses: {}, businessFeatureStatuses: {} },
+          { ...source, name: copyName, status: 'Package ready to deploy', updatedOn: today(), businesses: 0, businessNames: [], businessStatuses: {}, businessFeatureStatuses: {} },
           ...prev,
         ]
       })
@@ -631,6 +740,18 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
   function toggleAllBusinesses() {
     setDeploySelected((prev) =>
       allSelected ? prev.filter((b) => !addableOptions.includes(b)) : Array.from(new Set([...prev, ...addableOptions])),
+    )
+  }
+
+  function groupAddable(group: BusinessGroup): string[] {
+    return group.businessNames.filter((b) => filteredBusinessOptions.includes(b) && !alreadyDeployed.includes(b))
+  }
+
+  function toggleGroup(group: BusinessGroup) {
+    const addable = groupAddable(group)
+    const groupAllSelected = addable.length > 0 && addable.every((b) => deploySelected.includes(b))
+    setDeploySelected((prev) =>
+      groupAllSelected ? prev.filter((b) => !addable.includes(b)) : Array.from(new Set([...prev, ...addable])),
     )
   }
 
@@ -670,6 +791,11 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
         }
       }),
     )
+  }
+
+  function retryPackageCreation(rowName: string) {
+    setRows((prev) => prev.map((r) => (r.name === rowName ? { ...r, status: 'Package ready to deploy', updatedOn: today() } : r)))
+    showToast('Retrying package creation')
   }
 
   function retryFeature(rowName: string, businessName: string, feature: string) {
@@ -869,40 +995,112 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
                 />
               </div>
 
-              <div className="flex flex-col gap-xs">
-                <button type="button" onClick={toggleAllBusinesses} className="flex items-center gap-sm py-sm text-left">
-                  <Checkbox checked={allSelected} />
-                  <span className="text-body text-text-primary">Select all</span>
-                </button>
-                {filteredBusinessOptions.map((name) => {
-                  const locked = alreadyDeployed.includes(name)
-                  const { title, code } = parseBusinessLabel(name)
-                  return (
-                    <button
-                      key={name}
-                      type="button"
-                      onClick={() => toggleBusiness(name)}
-                      disabled={locked}
-                      className={`flex items-start gap-sm py-sm text-left ${locked ? 'cursor-not-allowed' : ''}`}
-                    >
-                      <span className="mt-[3px]">
-                        <Checkbox checked={locked || deploySelected.includes(name)} disabled={locked} />
-                      </span>
-                      <span className="flex min-w-0 flex-col">
-                        <span className={`min-w-0 truncate text-body ${locked ? 'text-text-tertiary' : 'text-text-primary'}`}>{title}</span>
-                        <span className="min-w-0 truncate text-small text-text-tertiary">{code}</span>
-                      </span>
-                    </button>
-                  )
-                })}
-                {filteredBusinessOptions.length === 0 && (
-                  <p className="text-body text-text-tertiary">No businesses found.</p>
-                )}
+              <div className="flex items-center gap-xs">
+                <span className="text-body text-text-secondary">View by</span>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setViewByMenuOpen((o) => !o)}
+                    className="flex items-center gap-xs rounded-sm px-xs py-[2px] text-body hover:bg-surface-hover"
+                  >
+                    <span className="text-primary">{deployViewMode === 'group' ? 'Business group' : 'Businesses'}</span>
+                    <Icon name={viewByMenuOpen ? 'expand_less' : 'expand_more'} size={18} className="text-primary" />
+                  </button>
+                  {viewByMenuOpen && (
+                    <>
+                      <div className="fixed inset-0 z-[105]" onClick={() => setViewByMenuOpen(false)} />
+                      <div className="absolute left-0 top-full z-[110] mt-xs min-w-[168px] rounded-sm border border-border bg-surface py-xs shadow-dropdown">
+                        {(['businesses', 'group'] as const).map((mode) => (
+                          <button
+                            key={mode}
+                            type="button"
+                            onClick={() => {
+                              setDeployViewMode(mode)
+                              setViewByMenuOpen(false)
+                            }}
+                            className="block w-full px-md py-sm text-left text-body text-text-primary hover:bg-surface-hover"
+                          >
+                            {mode === 'group' ? 'Business group' : 'Businesses'}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
+
+              {deployViewMode === 'businesses' ? (
+                <div className="flex flex-col gap-xs">
+                  <button type="button" onClick={toggleAllBusinesses} className="flex items-center gap-sm py-sm text-left">
+                    <Checkbox checked={allSelected} />
+                    <span className="text-body text-text-primary">Select all</span>
+                  </button>
+                  {filteredBusinessOptions.map((name) => {
+                    const locked = alreadyDeployed.includes(name)
+                    const { title, code } = parseBusinessLabel(name)
+                    return (
+                      <button
+                        key={name}
+                        type="button"
+                        onClick={() => toggleBusiness(name)}
+                        disabled={locked}
+                        className={`flex items-start gap-sm py-sm text-left ${locked ? 'cursor-not-allowed' : ''}`}
+                      >
+                        <span className="mt-[3px]">
+                          <Checkbox checked={locked || deploySelected.includes(name)} disabled={locked} />
+                        </span>
+                        <span className="flex min-w-0 flex-col">
+                          <span className={`min-w-0 truncate text-body ${locked ? 'text-text-tertiary' : 'text-text-primary'}`}>{title}</span>
+                          <span className="min-w-0 truncate text-small text-text-tertiary">{code}</span>
+                        </span>
+                      </button>
+                    )
+                  })}
+                  {filteredBusinessOptions.length === 0 && (
+                    <p className="text-body text-text-tertiary">No businesses found.</p>
+                  )}
+                </div>
+              ) : (
+                <div className="flex flex-col gap-xs">
+                  <button type="button" onClick={toggleAllBusinesses} className="flex items-center gap-sm py-sm text-left">
+                    <Checkbox checked={allSelected} />
+                    <span className="text-body text-text-primary">Select all</span>
+                  </button>
+                  {BUSINESS_GROUPS.map((group) => {
+                    const groupBusinesses = group.businessNames.filter((b) => filteredBusinessOptions.includes(b))
+                    if (groupBusinesses.length === 0) return null
+                    const addable = groupAddable(group)
+                    const locked = addable.length === 0
+                    const groupAllSelected = addable.length > 0 && addable.every((b) => deploySelected.includes(b))
+                    return (
+                      <button
+                        key={group.id}
+                        type="button"
+                        onClick={() => toggleGroup(group)}
+                        disabled={locked}
+                        className={`flex items-start gap-sm py-sm text-left ${locked ? 'cursor-not-allowed' : ''}`}
+                      >
+                        <span className="mt-[3px]">
+                          <Checkbox checked={locked || groupAllSelected} disabled={locked} />
+                        </span>
+                        <span className="flex min-w-0 flex-col">
+                          <span className={`min-w-0 truncate text-body ${locked ? 'text-text-tertiary' : 'text-text-primary'}`}>{group.label}</span>
+                          <span className="min-w-0 truncate text-small text-text-tertiary">
+                            {groupBusinesses.length} {groupBusinesses.length === 1 ? 'business' : 'businesses'}
+                          </span>
+                        </span>
+                      </button>
+                    )
+                  })}
+                  {BUSINESS_GROUPS.every((group) => group.businessNames.filter((b) => filteredBusinessOptions.includes(b)).length === 0) && (
+                    <p className="text-body text-text-tertiary">No businesses found.</p>
+                  )}
+                </div>
+              )}
             </div>
           ) : (
             <div className="flex flex-1 flex-col gap-lg overflow-y-auto px-2xl pb-2xl pt-md">
-              <label className="text-small text-text-primary">Please note</label>
+              <label className="text-small text-text-primary">Please note the following before you deploy</label>
               {deployRow &&
                 getFeatureSections(deployRow.featureGroups).map((section, index, sections) => (
                   <div
@@ -1015,8 +1213,9 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
         fields={[
           { key: 'name', label: 'Name', type: 'text', placeholder: 'Example: Positive review agent package' },
           { key: 'sourceAccount', label: 'Source account', type: 'select', options: BUSINESS_SELECT_OPTIONS },
-          { key: 'agents', label: 'Agents', type: 'select', options: AGENT_SELECT_OPTIONS, multi: true },
-          { key: 'templates', label: 'Templates', type: 'template-modal', templateCategories: TEMPLATE_CATEGORIES, templateItems: TEMPLATE_ITEMS },
+          { key: 'agents', label: 'Agents', type: 'agent-modal', templateCategories: AGENT_CATEGORIES, templateItems: AGENT_ITEMS },
+          { key: 'emailTemplates', label: 'Email templates', type: 'template-modal', templateCategories: EMAIL_TEMPLATE_CATEGORIES, templateItems: EMAIL_TEMPLATE_ITEMS },
+          { key: 'textTemplates', label: 'Text templates', type: 'template-modal', templateCategories: TEXT_TEMPLATE_CATEGORIES, templateItems: TEXT_TEMPLATE_ITEMS },
         ]}
         submitLabel="Save"
         requiredKeys={['name', 'sourceAccount']}
@@ -1030,21 +1229,24 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
                   ...editingRow.featureGroups.reviewGenerationAgents,
                   ...editingRow.featureGroups.reviewResponseAgents,
                 ].join(','),
-                templates: editingRow.featureGroups.templates.join(','),
+                emailTemplates: editingRow.featureGroups.emailTemplates.join(','),
+                textTemplates: editingRow.featureGroups.textTemplates.join(','),
               }
             : undefined
         }
         onClose={() => setDrawerOpen(false)}
         onSubmit={(values) => {
           const selectedAgents = values.agents ? values.agents.split(',').filter(Boolean) : []
-          const selectedTemplates = values.templates ? values.templates.split(',').filter(Boolean) : []
+          const selectedEmailTemplates = values.emailTemplates ? values.emailTemplates.split(',').filter(Boolean) : []
+          const selectedTextTemplates = values.textTemplates ? values.textTemplates.split(',').filter(Boolean) : []
           const featureGroups: FeatureGroups = {
             listingOptimizationAgents: selectedAgents.filter((a) => LISTING_OPTIMIZATION_AGENTS.includes(a)),
             reviewGenerationAgents: selectedAgents.filter((a) => REVIEW_GENERATION_AGENTS.includes(a)),
             reviewResponseAgents: selectedAgents.filter((a) => REVIEW_RESPONSE_AGENTS.includes(a)),
-            templates: selectedTemplates,
+            emailTemplates: selectedEmailTemplates,
+            textTemplates: selectedTextTemplates,
           }
-          const features = selectedAgents.length + selectedTemplates.length
+          const features = selectedAgents.length + selectedEmailTemplates.length + selectedTextTemplates.length
           const sourceAccountName = parseBusinessLabel(values.sourceAccount).title
 
           if (editingRowName) {
@@ -1060,7 +1262,7 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
               {
                 name: values.name,
                 lastUpdatedBy: 'You',
-                status: 'Draft',
+                status: 'Package ready to deploy',
                 features,
                 featureGroups,
                 businesses: 0,

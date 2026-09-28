@@ -1,7 +1,7 @@
 import type { SelectOption } from '../SelectMenu/SelectMenu.types'
 import type { TemplateCategory, TemplateItem } from '../TemplatePicker/TemplatePicker'
 
-export type FormFieldType = 'text' | 'select' | 'template-picker' | 'template-modal' | 'textarea'
+export type FormFieldType = 'text' | 'select' | 'template-picker' | 'template-modal' | 'agent-modal' | 'textarea'
 
 export interface TemplateOption {
   label: string
@@ -20,9 +20,9 @@ export interface FormField {
   multi?: boolean
   /** Options for template-picker fields. */
   templateOptions?: TemplateOption[]
-  /** Categories for template-modal fields — rendered as the left sidebar. */
+  /** Categories for template-modal/agent-modal fields — rendered as the left sidebar. */
   templateCategories?: TemplateCategory[]
-  /** Items for template-modal fields. Value is stored as a comma-joined list of item ids. */
+  /** Items for template-modal/agent-modal fields. Value is stored as a comma-joined list of item ids. */
   templateItems?: TemplateItem[]
   /** Max character count for textarea fields. */
   charLimit?: number
