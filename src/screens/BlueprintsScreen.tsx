@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
+  Chip,
+  type ChipVariant,
   ConfirmModal,
   CustomizeColumnsDrawer,
   DataTable,
@@ -23,12 +25,21 @@ import {
 import { BackArrowIcon } from '../assets/BackArrowIcon'
 
 type BlueprintStatus =
-  | 'Package being created'
-  | 'Package creation failed'
-  | 'Package ready to deploy'
-  | 'Package deployment in progress'
-  | 'Package deployed'
-  | 'Package partially deployed'
+  | 'Processing'
+  | 'Creation failed'
+  | 'Ready to deploy'
+  | 'Deployment in progress'
+  | 'Deployed'
+  | 'Partially deployed'
+
+const STATUS_CHIP_VARIANT: Record<BlueprintStatus, ChipVariant> = {
+  'Processing': 'neutral',
+  'Creation failed': 'danger',
+  'Ready to deploy': 'info',
+  'Deployment in progress': 'warning',
+  'Deployed': 'success',
+  'Partially deployed': 'success',
+}
 
 interface FeatureGroups {
   listingOptimizationAgents: string[]
@@ -415,13 +426,13 @@ function buildRow(
 }
 
 const INITIAL_DATA: BlueprintRow[] = [
-  buildRow('Review Management Essentials', 'Adam', 'Package deployed', { listing: 1, generation: 1, response: 1, emailTemplates: 1, textTemplates: 0 }, 20, 'Lakeside Autogroup', 'Sep 10, 2026', 0),
-  buildRow('Customer Engagement Pack', 'Adam', 'Package being created', { listing: 1, generation: 1, response: 1, emailTemplates: 1, textTemplates: 1 }, 10, 'Lakeside Autogroup', 'Sep 04, 2026', 1),
-  buildRow('Reputation Growth Setup', 'Adam', 'Package ready to deploy', { listing: 1, generation: 2, response: 1, emailTemplates: 1, textTemplates: 0 }, 0, 'Lakeside Autogroup', 'Sep 01, 2026', 2),
-  buildRow('Social & Reviews Starter', 'Adam', 'Package deployment in progress', { listing: 1, generation: 1, response: 2, emailTemplates: 0, textTemplates: 1 }, 10, 'Lakeside Autogroup', 'Oct 20, 2026', 3),
-  buildRow('Complete Reputation Automation', 'Adam', 'Package partially deployed', { listing: 2, generation: 1, response: 1, emailTemplates: 1, textTemplates: 1 }, 15, 'Lakeside Autogroup', 'Oct 15, 2026', 4),
-  buildRow('Loyalty & VIP Program', 'Adam', 'Package creation failed', { listing: 1, generation: 1, response: 1, emailTemplates: 0, textTemplates: 0 }, 0, 'Lakeside Autogroup', 'Oct 22, 2026', 5),
-  buildRow('Service Reminder Suite', 'Adam', 'Package deployed', { listing: 1, generation: 1, response: 1, emailTemplates: 1, textTemplates: 1 }, 30, 'Lakeside Autogroup', 'Sep 18, 2026', 6),
+  buildRow('Review Management Essentials', 'Adam', 'Deployed', { listing: 1, generation: 1, response: 1, emailTemplates: 1, textTemplates: 0 }, 20, 'Lakeside Autogroup', 'Sep 10, 2026', 0),
+  buildRow('Customer Engagement Pack', 'Adam', 'Processing', { listing: 1, generation: 1, response: 1, emailTemplates: 1, textTemplates: 1 }, 10, 'Lakeside Autogroup', 'Sep 04, 2026', 1),
+  buildRow('Reputation Growth Setup', 'Adam', 'Ready to deploy', { listing: 1, generation: 2, response: 1, emailTemplates: 1, textTemplates: 0 }, 0, 'Lakeside Autogroup', 'Sep 01, 2026', 2),
+  buildRow('Social & Reviews Starter', 'Adam', 'Deployment in progress', { listing: 1, generation: 1, response: 2, emailTemplates: 0, textTemplates: 1 }, 10, 'Lakeside Autogroup', 'Oct 20, 2026', 3),
+  buildRow('Complete Reputation Automation', 'Adam', 'Partially deployed', { listing: 2, generation: 1, response: 1, emailTemplates: 1, textTemplates: 1 }, 15, 'Lakeside Autogroup', 'Oct 15, 2026', 4),
+  buildRow('Loyalty & VIP Program', 'Adam', 'Creation failed', { listing: 1, generation: 1, response: 1, emailTemplates: 0, textTemplates: 0 }, 0, 'Lakeside Autogroup', 'Oct 22, 2026', 5),
+  buildRow('Service Reminder Suite', 'Adam', 'Deployed', { listing: 1, generation: 1, response: 1, emailTemplates: 1, textTemplates: 1 }, 30, 'Lakeside Autogroup', 'Sep 18, 2026', 6),
 ]
 
 const FILTER_FIELDS: FilterField[] = [
@@ -630,12 +641,12 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
     },
     {
       key: 'status',
-      label: 'Status',
+      label: 'Package status',
       width: 240,
       sortable: true,
       render: (_: unknown, row: unknown) => {
         const r = row as BlueprintRow
-        return <span className="text-body text-text-primary">{r.status}</span>
+        return <Chip label={r.status} variant={STATUS_CHIP_VARIANT[r.status]} />
       },
     },
   ]
@@ -670,8 +681,8 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
       onClick: (row) => setDeployRowName((row as unknown as BlueprintRow).name),
       visible: (row) => {
         const r = row as unknown as BlueprintRow
-        if (r.status === 'Package ready to deploy') return true
-        if (r.status === 'Package deployed') return r.businessNames.length < BUSINESS_NAMES.length
+        if (r.status === 'Ready to deploy') return true
+        if (r.status === 'Deployed') return r.businessNames.length < BUSINESS_NAMES.length
         return false
       },
     },
@@ -681,8 +692,8 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
       onClick: (row) => setViewStatusRowName((row as unknown as BlueprintRow).name),
       visible: (row) => {
         const r = row as unknown as BlueprintRow
-        if (r.status === 'Package deployment in progress' || r.status === 'Package partially deployed') return true
-        if (r.status === 'Package deployed') return r.businessNames.length >= BUSINESS_NAMES.length
+        if (r.status === 'Deployment in progress' || r.status === 'Partially deployed') return true
+        if (r.status === 'Deployed') return r.businessNames.length >= BUSINESS_NAMES.length
         return false
       },
     },
@@ -690,7 +701,7 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
       icon: 'refresh',
       label: 'Retry',
       onClick: (row) => retryPackageCreation((row as unknown as BlueprintRow).name),
-      visible: (row) => (row as unknown as BlueprintRow).status === 'Package creation failed',
+      visible: (row) => (row as unknown as BlueprintRow).status === 'Creation failed',
     },
   ]
 
@@ -720,7 +731,7 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
         if (!source) return prev
         const copyName = `${source.name} copy`
         return [
-          { ...source, name: copyName, status: 'Package ready to deploy', updatedOn: today(), businesses: 0, businessNames: [], businessStatuses: {}, businessFeatureStatuses: {} },
+          { ...source, name: copyName, status: 'Ready to deploy', updatedOn: today(), businesses: 0, businessNames: [], businessStatuses: {}, businessFeatureStatuses: {} },
           ...prev,
         ]
       })
@@ -794,7 +805,7 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
   }
 
   function retryPackageCreation(rowName: string) {
-    setRows((prev) => prev.map((r) => (r.name === rowName ? { ...r, status: 'Package ready to deploy', updatedOn: today() } : r)))
+    setRows((prev) => prev.map((r) => (r.name === rowName ? { ...r, status: 'Ready to deploy', updatedOn: today() } : r)))
     showToast('Retrying package creation')
   }
 
@@ -1267,7 +1278,7 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
               {
                 name: values.name,
                 lastUpdatedBy: 'You',
-                status: 'Package ready to deploy',
+                status: 'Ready to deploy',
                 features,
                 featureGroups,
                 businesses: 0,

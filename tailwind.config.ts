@@ -46,6 +46,7 @@ export default {
           success: { bg: '#f1faf0', text: '#377e2c' }, // Green/20 · positive
           danger: { bg: '#fef6f5', text: '#de1b0c' }, // Red/10 · negative
           neutral: { bg: '#eaeaea', text: '#555555' }, // Gray/40 · Gray/300
+          info: { bg: '#e8f0fe', text: '#1976d2' }, // Blue/10 · informative
         },
         tooltip: { DEFAULT: '#252525' }, // Gray/800 — Tooltip / Web (Aero DS, node 2180:72)
       },
