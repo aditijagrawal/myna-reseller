@@ -149,6 +149,12 @@ function generateBusinessStatuses(
   return { statuses, featureStatuses }
 }
 
+const DEPLOY_STATUS_LABEL: Record<BusinessDeployStatus, string> = {
+  Completed: 'Applied',
+  'In progress': 'Applying',
+  Failed: 'Failed',
+}
+
 function DeployStatusChip({ status }: { status: BusinessDeployStatus }) {
   const styles: Record<BusinessDeployStatus, string> = {
     Completed: 'bg-[#f1faf0] text-[#377e2c]',
@@ -157,7 +163,7 @@ function DeployStatusChip({ status }: { status: BusinessDeployStatus }) {
   }
   return (
     <span className={`inline-flex items-center rounded-sm px-sm py-[2px] text-small ${styles[status]}`}>
-      {status}
+      {DEPLOY_STATUS_LABEL[status]}
     </span>
   )
 }
@@ -1190,10 +1196,16 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
             >
               <BackArrowIcon />
             </button>
-            <h2 className="text-[16px] leading-6 tracking-[-0.32px] text-text-primary">Status</h2>
+            <h2 className="text-[16px] leading-6 tracking-[-0.32px] text-text-primary">Setup status</h2>
           </div>
 
           <div className="flex-1 overflow-y-auto px-2xl pb-2xl">
+            <div className="mb-md flex items-start gap-sm rounded-sm bg-primary/5 px-md py-sm">
+              <Icon name="info" size={18} className="mt-0.5 shrink-0 text-primary" />
+              <p className="flex-1 text-small text-text-primary">
+                This status reflects whether the assets copied over to the business. Some assets need configuration at the business level before they're ready to use.
+              </p>
+            </div>
             {viewStatusRow && (
               <ViewStatusAccordion
                 row={viewStatusRow}
@@ -1244,7 +1256,7 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
           { key: 'emailTemplates', label: 'Email templates', type: 'template-modal', templateCategories: EMAIL_TEMPLATE_CATEGORIES, templateItems: EMAIL_TEMPLATE_ITEMS },
           { key: 'textTemplates', label: 'Text templates', type: 'template-modal', templateCategories: TEXT_TEMPLATE_CATEGORIES, templateItems: TEXT_TEMPLATE_ITEMS },
         ]}
-        submitLabel="Save"
+        submitLabel={editingRow ? 'Save' : 'Create'}
         requiredKeys={['name', 'sourceAccount']}
         initialValues={
           editingRow
