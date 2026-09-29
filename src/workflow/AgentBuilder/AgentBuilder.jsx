@@ -2222,8 +2222,8 @@ export default function AgentBuilder({
       {/* ─── Blueprint sync confirm modal ─── */}
       <ConfirmModal
         open={blueprintSyncModalOpen}
-        title="Sync changes to managed package?"
-        description="Any changes made to this agent will be synced to the managed package and thus deployed on all the businesses selected for the managed package."
+        title="Sync changes to reusable setup?"
+        description="Any changes made to this agent will be synced to the reusable setup and thus deployed on all the businesses selected for the reusable setup."
         confirmLabel="Save"
         onClose={() => setBlueprintSyncModalOpen(false)}
         onConfirm={handleConfirmBlueprintSync}

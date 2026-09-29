@@ -190,7 +190,7 @@ const SECTIONS: SettingsSection[] = [
       { icon: 'group',                    label: 'Groups', subtext: 'Organize locations or users into groups for easier management' },
       { icon: 'confirmation_number',      label: 'Deal registration', subtext: 'Register and track deals associated with your account' },
       { icon: 'content_paste',            label: 'Product usage', subtext: 'View usage analytics across your active products' },
-      { icon: 'join_full', label: 'Managed packages', subtext: 'Build a feature in your source account once and apply it to other businesses' },
+      { icon: 'join_full', label: 'Reusable setups', subtext: 'Build a setup once in your source account and apply it to other businesses' },
     ],
   },
 ]
@@ -303,7 +303,7 @@ export function SettingsScreen({ initialTab, onTabConsumed, onWebWidgets, onAppo
                             ? onWebWidgets
                             : item.label === 'Appointment widgets'
                               ? onAppointmentWidgets
-                              : item.label === 'Managed packages'
+                              : item.label === 'Reusable setups'
                                 ? onBlueprints
                                 : undefined
                         }

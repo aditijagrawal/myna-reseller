@@ -278,7 +278,7 @@ export function FormDrawer({
           initialSelected={getMultiValues(activeModalField.key)}
           enableAiTab={activeModalField.type === 'template-modal'}
           headerLabel={activeModalField.type === 'agent-modal' ? 'Agents' : undefined}
-          infoText={activeModalField.type === 'agent-modal' ? 'Select the agents to include in this package.' : undefined}
+          infoText={activeModalField.type === 'agent-modal' ? 'Select the agents to include in this setup.' : undefined}
           showThumbnail={activeModalField.type !== 'agent-modal'}
           onClose={() => setOpenField(null)}
           onSelect={(ids) => {
