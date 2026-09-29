@@ -41,6 +41,15 @@ const STATUS_CHIP_VARIANT: Record<BlueprintStatus, ChipVariant> = {
   'Partially deployed': 'success',
 }
 
+const STATUS_CHIP_LABEL: Record<BlueprintStatus, string> = {
+  'Processing': 'Creating',
+  'Creation failed': 'Creation failed',
+  'Ready to deploy': 'Ready to apply',
+  'Deployment in progress': 'Applying',
+  'Deployed': 'Applied',
+  'Partially deployed': 'Partially applied',
+}
+
 interface FeatureGroups {
   listingOptimizationAgents: string[]
   reviewGenerationAgents: string[]
@@ -140,6 +149,12 @@ function generateBusinessStatuses(
   return { statuses, featureStatuses }
 }
 
+const DEPLOY_STATUS_LABEL: Record<BusinessDeployStatus, string> = {
+  Completed: 'Applied',
+  'In progress': 'Applying',
+  Failed: 'Failed',
+}
+
 function DeployStatusChip({ status }: { status: BusinessDeployStatus }) {
   const styles: Record<BusinessDeployStatus, string> = {
     Completed: 'bg-[#f1faf0] text-[#377e2c]',
@@ -148,7 +163,7 @@ function DeployStatusChip({ status }: { status: BusinessDeployStatus }) {
   }
   return (
     <span className={`inline-flex items-center rounded-sm px-sm py-[2px] text-small ${styles[status]}`}>
-      {status}
+      {DEPLOY_STATUS_LABEL[status]}
     </span>
   )
 }
@@ -328,7 +343,7 @@ const ALL_AGENT_NAMES = [...LISTING_OPTIMIZATION_AGENTS, ...REVIEW_GENERATION_AG
 const AGENT_PREVIEWS: Record<string, string> = {
   'Listing Health Optimizer': 'Monitors business listings and keeps details accurate and up to date.',
   'Optimization 2': 'Optimizes listing content to improve visibility across search and directories.',
-  'Optimization 3': 'Automates additional listing optimization tasks for this package.',
+  'Optimization 3': 'Automates additional listing optimization tasks for this setup.',
   'Post-Visit Review Generator': 'Sends review requests to customers after a completed visit.',
   'Generation - follow-up': "Follows up with customers who haven't yet left a review.",
   'Generation - reminder': 'Sends reminder messages to prompt customers to leave a review.',
@@ -436,7 +451,7 @@ const INITIAL_DATA: BlueprintRow[] = [
 ]
 
 const FILTER_FIELDS: FilterField[] = [
-  { id: 'features', label: 'Features', options: [...ALL_AGENT_NAMES, ...TEMPLATE_NAMES].map((l) => ({ value: l, label: l })) },
+  { id: 'features', label: 'Assets', options: [...ALL_AGENT_NAMES, ...TEMPLATE_NAMES].map((l) => ({ value: l, label: l })) },
   { id: 'businesses', label: 'Businesses', options: BUSINESS_NAMES.map((l) => ({ value: l, label: l })) },
   { id: 'updatedOn', label: 'Updated on', type: 'date-range' },
 ]
@@ -599,7 +614,7 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
     { key: 'sourceAccount', label: 'Source account', width: 180, sortable: true },
     {
       key: 'features',
-      label: 'Features',
+      label: 'Assets',
       width: 90,
       sortable: true,
       render: (_: unknown, row: unknown) => {
@@ -641,12 +656,12 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
     },
     {
       key: 'status',
-      label: 'Package status',
+      label: 'Setup status',
       width: 240,
       sortable: true,
       render: (_: unknown, row: unknown) => {
         const r = row as BlueprintRow
-        return <Chip label={r.status} variant={STATUS_CHIP_VARIANT[r.status]} />
+        return <Chip label={STATUS_CHIP_LABEL[r.status]} variant={STATUS_CHIP_VARIANT[r.status]} />
       },
     },
   ]
@@ -677,7 +692,7 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
   const rowActions: RowAction<Record<string, unknown>>[] = [
     {
       icon: 'rocket_launch',
-      label: 'Deploy',
+      label: 'Apply',
       onClick: (row) => setDeployRowName((row as unknown as BlueprintRow).name),
       visible: (row) => {
         const r = row as unknown as BlueprintRow
@@ -700,20 +715,20 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
     {
       icon: 'refresh',
       label: 'Retry',
-      onClick: (row) => retryPackageCreation((row as unknown as BlueprintRow).name),
+      onClick: (row) => retrySetupCreation((row as unknown as BlueprintRow).name),
       visible: (row) => (row as unknown as BlueprintRow).status === 'Creation failed',
     },
   ]
 
   const CONFIRM_COPY: Record<'delete' | 'duplicate', { title: string; description: string; confirmLabel: string }> = {
     delete: {
-      title: 'Delete this managed package?',
-      description: 'This permanently deletes the managed package. Businesses that already received it keep their current features, but won’t get future updates from it.',
+      title: 'Delete this setup?',
+      description: 'Deleting this setup removes it from this list. Businesses that already have it keep their copies, but won\'t get future updates.',
       confirmLabel: 'Delete',
     },
     duplicate: {
-      title: 'Duplicate this managed package?',
-      description: 'This creates an exact copy of this managed package, including its source account and selected features',
+      title: 'Duplicate this setup?',
+      description: 'Duplicating this setup creates an exact copy, including its source account and selected assets',
       confirmLabel: 'Duplicate',
     },
   }
@@ -724,7 +739,7 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
 
     if (type === 'delete') {
       setRows((prev) => prev.filter((r) => r.name !== rowName))
-      showToast('Managed package deleted')
+      showToast('Reusable setup deleted')
     } else if (type === 'duplicate') {
       setRows((prev) => {
         const source = prev.find((r) => r.name === rowName)
@@ -735,7 +750,7 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
           ...prev,
         ]
       })
-      showToast('Managed package duplicated')
+      showToast('Reusable setup duplicated')
     }
 
     setConfirmAction(null)
@@ -784,7 +799,7 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
     )
     setDeployConfirmOpen(false)
     setDeployRowName(null)
-    showToast('Managed package deployed')
+    showToast('Reusable setup deployed')
   }
 
   function retryBusiness(rowName: string, businessName: string) {
@@ -804,9 +819,9 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
     )
   }
 
-  function retryPackageCreation(rowName: string) {
+  function retrySetupCreation(rowName: string) {
     setRows((prev) => prev.map((r) => (r.name === rowName ? { ...r, status: 'Ready to deploy', updatedOn: today() } : r)))
-    showToast('Retrying package creation')
+    showToast('Retrying setup creation')
   }
 
   function retryFeature(rowName: string, businessName: string, feature: string) {
@@ -835,20 +850,20 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
               Settings
             </Link>
             <Icon name="chevron_right" size={16} className="text-text-tertiary" />
-            <span className="text-body text-text-primary">Managed packages</span>
+            <span className="text-body text-text-primary">Reusable setups</span>
           </div>
 
           {/* Header bar */}
           <div className="sticky top-0 z-10 flex items-center justify-between bg-surface px-2xl py-xl">
             <div className="flex flex-col gap-xs">
-              <h1 className="text-h3 text-text-primary">Managed packages</h1>
+              <h1 className="text-h3 text-text-primary">Reusable setups</h1>
               <p className="text-small text-text-secondary">
-                Build a feature in your source account once and apply it to other businesses
+                Build a setup once in your source account and apply it to other businesses
               </p>
             </div>
 
             <div className="flex items-center gap-sm">
-              <HeaderSearchField open={searchOpen} value={search} onOpenChange={setSearchOpen} onChange={setSearch} placeholder="Search managed packages…" />
+              <HeaderSearchField open={searchOpen} value={search} onOpenChange={setSearchOpen} onChange={setSearch} placeholder="Search reusable setups…" />
               <button
                 type="button"
                 onClick={() => {
@@ -857,7 +872,7 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
                 }}
                 className="flex h-9 items-center rounded-sm bg-primary px-lg text-body text-white transition-colors hover:bg-primary-hover"
               >
-                Create a new managed package
+                Create setup
               </button>
               <button
                 type="button"
@@ -883,7 +898,7 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
             <div className="mx-2xl mb-md flex items-start gap-sm rounded-sm bg-primary/5 px-md py-sm">
               <Icon name="info" size={18} className="mt-0.5 shrink-0 text-primary" />
               <p className="flex-1 text-small text-text-primary">
-                When the source account is updated the managed package will automatically get synced and deploy the changes to businesses
+                When the source account changes, this setup updates automatically and pushes those changes to every business it's applied to. This doesn't require any confirmation.
               </p>
               <button
                 type="button"
@@ -920,7 +935,7 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
             style={{ top: cellMenu.top, left: cellMenu.left }}
           >
             <div className="px-lg pb-sm pt-md">
-              <span className="text-small text-text-tertiary">{cellMenu.column === 'features' ? 'Features' : 'Businesses'}</span>
+              <span className="text-small text-text-tertiary">{cellMenu.column === 'features' ? 'Assets' : 'Businesses'}</span>
             </div>
             {cellMenu.column === 'features' ? (
               <div className="flex min-w-0 flex-col gap-xs overflow-y-auto px-lg pb-md">
@@ -950,7 +965,7 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
         </>
       )}
 
-      {/* Deploy — select businesses drawer */}
+      {/* Apply — select businesses drawer */}
       <div className={`fixed inset-0 z-[100] ${deployRowName ? '' : 'pointer-events-none'}`} aria-hidden={!deployRowName}>
         <div
           onClick={() => setDeployRowName(null)}
@@ -971,7 +986,7 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
               >
                 <BackArrowIcon />
               </button>
-              <h2 className="text-[16px] leading-6 tracking-[-0.32px] text-text-primary">Deploy</h2>
+              <h2 className="text-[16px] leading-6 tracking-[-0.32px] text-text-primary">Apply setup</h2>
             </div>
             {deployStep === 'select' ? (
               <button
@@ -984,7 +999,7 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
                     : 'cursor-not-allowed bg-surface-selected text-text-tertiary'
                 }`}
               >
-                Save
+                Apply
               </button>
             ) : (
               <button
@@ -992,7 +1007,7 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
                 onClick={() => setDeployConfirmOpen(true)}
                 className="rounded-sm bg-primary px-lg py-[7px] text-body font-medium text-white transition-colors hover:bg-primary-hover"
               >
-                Deploy
+                Apply
               </button>
             )}
           </div>
@@ -1116,7 +1131,7 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
             </div>
           ) : (
             <div className="flex flex-1 flex-col gap-lg overflow-y-auto px-2xl pb-2xl pt-md">
-              <label className="text-small text-text-primary">Please note the following before you deploy</label>
+              <label className="text-small text-text-primary">Ensure the following before you apply</label>
               {deployRow &&
                 getFeatureSections(deployRow.featureGroups).map((section, index, sections) => (
                   <div
@@ -1181,10 +1196,16 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
             >
               <BackArrowIcon />
             </button>
-            <h2 className="text-[16px] leading-6 tracking-[-0.32px] text-text-primary">Status</h2>
+            <h2 className="text-[16px] leading-6 tracking-[-0.32px] text-text-primary">Setup status</h2>
           </div>
 
           <div className="flex-1 overflow-y-auto px-2xl pb-2xl">
+            <div className="mb-md flex items-start gap-sm rounded-sm bg-primary/5 px-md py-sm">
+              <Icon name="info" size={18} className="mt-0.5 shrink-0 text-primary" />
+              <p className="flex-1 text-small text-text-primary">
+                This status reflects whether the assets copied over to the business. Some assets need configuration at the business level before they're ready to use.
+              </p>
+            </div>
             {viewStatusRow && (
               <ViewStatusAccordion
                 row={viewStatusRow}
@@ -1212,28 +1233,30 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
         />
       )}
 
-      {/* Deploy (from drawer) confirm modal */}
+      {/* Apply (from drawer) confirm modal */}
       <ConfirmModal
         open={deployConfirmOpen}
-        title="Deploy updates to businesses?"
-        description="This will apply the latest changes from your source account to every business selected"
-        confirmLabel="Deploy"
+        title={`Apply setup to ${deploySelected.length === 1 ? 'business' : 'businesses'}?`}
+        description={`Applying this setup pushes its current assets to every ${
+          deploySelected.length === 1 ? 'business' : 'businesses'
+        } you select`}
+        confirmLabel="Apply"
         onClose={() => setDeployConfirmOpen(false)}
         onConfirm={deploy}
       />
 
-      {/* Create / edit managed package drawer */}
+      {/* Create / edit reusable setup drawer */}
       <FormDrawer
         open={drawerOpen}
-        title={editingRow ? editingRow.name : 'New managed package'}
+        title={editingRow ? editingRow.name : 'New reusable setup'}
         fields={[
-          { key: 'name', label: 'Name', type: 'text', placeholder: 'Example: Positive review agent package' },
+          { key: 'name', label: 'Name', type: 'text', placeholder: 'Example: Positive review agent setup' },
           { key: 'sourceAccount', label: 'Source account', type: 'select', options: BUSINESS_SELECT_OPTIONS },
           { key: 'agents', label: 'Agents', type: 'agent-modal', templateCategories: AGENT_PRODUCTS, templateGroups: AGENT_GROUPS, templateItems: AGENT_ITEMS },
           { key: 'emailTemplates', label: 'Email templates', type: 'template-modal', templateCategories: EMAIL_TEMPLATE_CATEGORIES, templateItems: EMAIL_TEMPLATE_ITEMS },
           { key: 'textTemplates', label: 'Text templates', type: 'template-modal', templateCategories: TEXT_TEMPLATE_CATEGORIES, templateItems: TEXT_TEMPLATE_ITEMS },
         ]}
-        submitLabel="Save"
+        submitLabel={editingRow ? 'Save' : 'Create'}
         requiredKeys={['name', 'sourceAccount']}
         initialValues={
           editingRow
@@ -1290,7 +1313,7 @@ export function BlueprintsScreen({ onBack }: BlueprintsScreenProps) {
               },
               ...prev,
             ])
-            showToast('Managed package created')
+            showToast('Reusable setup created')
           }
           setDrawerOpen(false)
           setEditingRowName(null)
